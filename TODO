@@ -1,0 +1,4 @@
++- search in reachable method of each activity instead of general search
+- consider view elements as in gator
+- create view instead of recording ids
+- value resolver make scoped, e.g in adapter resolver

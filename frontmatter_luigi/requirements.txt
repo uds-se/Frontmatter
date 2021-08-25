@@ -1,0 +1,14 @@
+luigi>=2.8.7
+tqdm>=4.45.0
+luigi>=2.8.7
+pandas~=1.0.3
+langid~=1.1.6
+requests>=2.20.0
+androguard~=3.3.5
+beautifulsoup4>=4.6.3
+googletrans~=2.4.0
+lxml~=4.5.1
+urllib3~=1.24
+joblib~=0.16
+spacy~=2.3.2
+nltk~=3.5

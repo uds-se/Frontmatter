@@ -1,0 +1,3955 @@
+diff --git a/README.md b/README.md
+index 547c6008..c1a21659 100644
+--- a/README.md
++++ b/README.md
+@@ -1,7 +1,7 @@
+ 
+ # WPDS
+ 
+-[![Run Status](https://api.shippable.com/projects/5a2536b9cf141c0700b92668/badge?branch=master)]() [![Build Status](http://soot-build.cs.uni-paderborn.de/jenkins/job/boomerang/job/WPDS/badge/icon)](http://soot-build.cs.uni-paderborn.de/jenkins/job/boomerang/job/WPDS/)
++[![Build Status](https://soot-build.cs.uni-paderborn.de/jenkins/buildStatus/icon?job=boomerang%2FWPDS-Multibranch%2Fmaster)](https://soot-build.cs.uni-paderborn.de/jenkins/job/boomerang/job/WPDS-Multibranch/job/master/)
+ 
+ This repository contains a Java implementation of Weighted Pushdown Systems.
+ Additionally, it contains an implementation of [Boomerang](boomerangPDS) and [IDEal](idealPDS) based on a Weighted Pushdown System.
+diff --git a/SynchronizedPDS/pom.xml b/SynchronizedPDS/pom.xml
+index b24fc836..b472c067 100644
+--- a/SynchronizedPDS/pom.xml
++++ b/SynchronizedPDS/pom.xml
+@@ -3,7 +3,7 @@
+ 	<parent>
+ 		<groupId>de.fraunhofer.iem</groupId>
+ 		<artifactId>SPDS</artifactId>
+-		<version>2.1-SNAPSHOT</version>
++		<version>2.5.1k-SNAPSHOT</version>
+     	<relativePath>../pom.xml</relativePath>
+ 	</parent>
+ 	<modelVersion>4.0.0</modelVersion>
+@@ -13,7 +13,7 @@
+ 			<plugin>
+ 				<groupId>org.apache.maven.plugins</groupId>
+ 				<artifactId>maven-surefire-plugin</artifactId>
+-				<version>2.21.0</version>
++				<version>2.22.2</version>
+ 				<configuration>
+ 					<argLine>-Xmx8G -Xss128m</argLine>
+ 					<reportsDirectory>../shippable/testresults/synchronizedPDS</reportsDirectory>
+@@ -25,12 +25,12 @@
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+ 			<artifactId>WPDS</artifactId>
+-			<version>2.1-SNAPSHOT</version>
++			<version>2.5.1-SNAPSHOT</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>com.google.guava</groupId>
+ 			<artifactId>guava</artifactId>
+-			<version>23.5-jre</version>
++			<version>28.2-jre</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+@@ -43,9 +43,15 @@
+ 			<version>4.12</version>
+ 		</dependency>
+ 		<dependency>
+-			<groupId>org.apache.logging.log4j</groupId>
+-			<artifactId>log4j-core</artifactId>
+-			<version>2.11.0</version>
++		    <groupId>org.slf4j</groupId>
++		    <artifactId>slf4j-api</artifactId>
++		    <version>1.7.28</version>
++		</dependency>
++		<dependency>
++		    <groupId>org.slf4j</groupId>
++		    <artifactId>slf4j-log4j12</artifactId>
++		    <version>1.7.28</version>
++		    <scope>test</scope>
+ 		</dependency>
+ 	</dependencies>
+ </project>
+\ No newline at end of file
+diff --git a/SynchronizedPDS/src/main/java/sync/pds/solver/SyncPDSSolver.java b/SynchronizedPDS/src/main/java/sync/pds/solver/SyncPDSSolver.java
+index 2ada87e3..be70bee9 100644
+--- a/SynchronizedPDS/src/main/java/sync/pds/solver/SyncPDSSolver.java
++++ b/SynchronizedPDS/src/main/java/sync/pds/solver/SyncPDSSolver.java
+@@ -18,15 +18,14 @@ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Set;
+ 
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
+-
+ import com.google.common.collect.HashMultimap;
+ import com.google.common.collect.Lists;
+ import com.google.common.collect.Maps;
+ import com.google.common.collect.Multimap;
+ import com.google.common.collect.Sets;
+ 
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import sync.pds.solver.nodes.CallPopNode;
+ import sync.pds.solver.nodes.ExclusionNode;
+ import sync.pds.solver.nodes.GeneratedState;
+@@ -57,18 +56,18 @@ public abstract class SyncPDSSolver<Stmt extends Location, Fact, Field extends L
+         FIELDS, CALLS
+     }
+ 
+-    private static final Logger logger = LogManager.getLogger();
++    private static final Logger logger = LoggerFactory.getLogger(SyncPDSSolver.class);
+     private static final boolean FieldSensitive = true;
+     private static final boolean ContextSensitive = true;
+     protected final WeightedPushdownSystem<Stmt, INode<Fact>, W> callingPDS = new WeightedPushdownSystem<Stmt, INode<Fact>, W>() {
+         public String toString() {
+             return "Call " + SyncPDSSolver.this.toString();
+-        };
++        }
+     };
+     protected final WeightedPushdownSystem<Field, INode<Node<Stmt, Fact>>, W> fieldPDS = new WeightedPushdownSystem<Field, INode<Node<Stmt, Fact>>, W>() {
+         public String toString() {
+             return "Field " + SyncPDSSolver.this.toString();
+-        };
++        }
+     };
+     private final Set<Node<Stmt, Fact>> reachedStates = Sets.newHashSet();
+     private final Set<Node<Stmt, Fact>> callingContextReachable = Sets.newHashSet();
+@@ -107,7 +106,7 @@ public abstract class SyncPDSSolver<Stmt extends Location, Fact, Field extends L
+             @Override
+             public boolean nested() {
+                 return useFieldSummaries;
+-            };
++            }
+ 
+             @Override
+             public W getZero() {
+@@ -124,7 +123,7 @@ public abstract class SyncPDSSolver<Stmt extends Location, Fact, Field extends L
+                     return false;
+                 logger.trace("Adding field transition {} with weight {}", trans, weight);
+                 return super.addWeightForTransition(trans, weight);
+-            };
++            }
+ 
+             @Override
+             public boolean isGeneratedState(INode<Node<Stmt, Fact>> d) {
+@@ -156,7 +155,7 @@ public abstract class SyncPDSSolver<Stmt extends Location, Fact, Field extends L
+             @Override
+             public boolean nested() {
+                 return useCallSummaries;
+-            };
++            }
+ 
+             @Override
+             public W getOne() {
+@@ -168,7 +167,7 @@ public abstract class SyncPDSSolver<Stmt extends Location, Fact, Field extends L
+                     return false;
+                 logger.trace("Adding call transition {} with weight {}", trans, weight);
+                 return super.addWeightForTransition(trans, weight);
+-            };
++            }
+ 
+             @Override
+             public boolean isGeneratedState(INode<Fact> d) {
+@@ -745,13 +744,13 @@ public abstract class SyncPDSSolver<Stmt extends Location, Fact, Field extends L
+     }
+ 
+     public void debugOutput() {
+-        logger.debug(this.getClass());
++        logger.debug(this.getClass().toString());
+         logger.debug("All reachable states");
+         prettyPrintSet(getReachedStates());
+ 
+-        HashSet<Node<Stmt, Fact>> notFieldReachable = Sets.newHashSet(callingContextReachable);
++        Set<Node<Stmt, Fact>> notFieldReachable = Sets.newHashSet(callingContextReachable);
+         notFieldReachable.removeAll(getReachedStates());
+-        HashSet<Node<Stmt, Fact>> notCallingContextReachable = Sets.newHashSet(fieldContextReachable);
++        Set<Node<Stmt, Fact>> notCallingContextReachable = Sets.newHashSet(fieldContextReachable);
+         notCallingContextReachable.removeAll(getReachedStates());
+         if (!notFieldReachable.isEmpty()) {
+             logger.debug("Calling context reachable");
+@@ -761,11 +760,11 @@ public abstract class SyncPDSSolver<Stmt extends Location, Fact, Field extends L
+             logger.debug("Field matching reachable");
+             prettyPrintSet(notCallingContextReachable);
+         }
+-        logger.debug(fieldPDS);
++        logger.debug(fieldPDS.toString());
+         logger.debug(fieldAutomaton.toDotString());
+-        logger.debug(callingPDS);
++        logger.debug(callingPDS.toString());
+         logger.debug(callAutomaton.toDotString());
+-        logger.debug("===== end === " + this.getClass());
++        logger.debug("===== end === {}", getClass());
+     }
+ 
+     private void prettyPrintSet(Collection<? extends Object> set) {
+diff --git a/WPDS/pom.xml b/WPDS/pom.xml
+index 530ac5d1..01885c5a 100644
+--- a/WPDS/pom.xml
++++ b/WPDS/pom.xml
+@@ -1,43 +1,43 @@
+-<project xmlns="http://maven.apache.org/POM/4.0.0"
+-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+-	<parent>
+-		<groupId>de.fraunhofer.iem</groupId>
+-		<artifactId>SPDS</artifactId>
+-	    <version>2.1-SNAPSHOT</version>
+-    	<relativePath>../pom.xml</relativePath>
+-	</parent>
+-	<modelVersion>4.0.0</modelVersion>
+-	<artifactId>WPDS</artifactId>
+-	<build>
+-		<plugins>
+-			<plugin>
+-				<groupId>org.apache.maven.plugins</groupId>
+-				<artifactId>maven-surefire-plugin</artifactId>
+-				<version>2.12.4</version>
+-				<configuration>
+-					<argLine>-Xmx8G -Xss128m</argLine>
+-					<reportsDirectory>../shippable/testresults/WPDS</reportsDirectory>
+-				</configuration>
+-			</plugin>
+-		</plugins>
+-	</build>
+-	<dependencies>
+-		<dependency>
+-			<groupId>com.google.guava</groupId>
+-			<artifactId>guava</artifactId>
+-			<version>23.5-jre</version>
+-		</dependency>
+-		<dependency>
+-			<groupId>de.fraunhofer.iem</groupId>
+-			<artifactId>PathExpression</artifactId>
+-			<version>1.0.0</version>
+-		</dependency>
+-		<dependency>
+-			<groupId>junit</groupId>
+-			<artifactId>junit</artifactId>
+-			<version>4.12</version>
+-			<scope>test</scope>
+-		</dependency>
+-	</dependencies>
++<project xmlns="http://maven.apache.org/POM/4.0.0"
++	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
++	<parent>
++		<groupId>de.fraunhofer.iem</groupId>
++		<artifactId>SPDS</artifactId>
++	    <version>2.5.1k-SNAPSHOT</version>
++    	<relativePath>../pom.xml</relativePath>
++	</parent>
++	<modelVersion>4.0.0</modelVersion>
++	<artifactId>WPDS</artifactId>
++	<build>
++		<plugins>
++			<plugin>
++				<groupId>org.apache.maven.plugins</groupId>
++				<artifactId>maven-surefire-plugin</artifactId>
++				<version>2.12.4</version>
++				<configuration>
++					<argLine>-Xmx8G -Xss128m</argLine>
++					<reportsDirectory>../shippable/testresults/WPDS</reportsDirectory>
++				</configuration>
++			</plugin>
++		</plugins>
++	</build>
++	<dependencies>
++		<dependency>
++			<groupId>com.google.guava</groupId>
++			<artifactId>guava</artifactId>
++			<version>28.2-jre</version>
++		</dependency>
++		<dependency>
++			<groupId>de.fraunhofer.iem</groupId>
++			<artifactId>PathExpression</artifactId>
++			<version>1.0.0</version>
++		</dependency>
++		<dependency>
++			<groupId>junit</groupId>
++			<artifactId>junit</artifactId>
++			<version>4.12</version>
++			<scope>test</scope>
++		</dependency>
++	</dependencies>
+ </project>
+\ No newline at end of file
+diff --git a/boomerangPDS/pom.xml b/boomerangPDS/pom.xml
+index 29797e5c..f43af309 100644
+--- a/boomerangPDS/pom.xml
++++ b/boomerangPDS/pom.xml
+@@ -4,7 +4,7 @@
+     <parent>
+ 		<groupId>de.fraunhofer.iem</groupId>
+ 		<artifactId>SPDS</artifactId>
+-		<version>2.1-SNAPSHOT</version>
++		<version>2.5.1k-SNAPSHOT</version>
+     	<relativePath>../pom.xml</relativePath>
+ 	</parent>
+ 	<modelVersion>4.0.0</modelVersion>
+@@ -26,17 +26,17 @@
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+ 			<artifactId>testCore</artifactId>
+-			<version>2.1-SNAPSHOT</version>
++			<version>2.5.1k-SNAPSHOT</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+ 			<artifactId>WPDS</artifactId>
+-			<version>2.1-SNAPSHOT</version>
++			<version>2.5.1k-SNAPSHOT</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>com.google.guava</groupId>
+ 			<artifactId>guava</artifactId>
+-			<version>23.5-jre</version>
++            <version>28.2-jre</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+@@ -56,7 +56,7 @@
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+ 			<artifactId>synchronizedPDS</artifactId>
+-			<version>2.1-SNAPSHOT</version>
++			<version>2.5.1k-SNAPSHOT</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>com.googlecode.json-simple</groupId>
+@@ -68,11 +68,16 @@
+ 			<artifactId>commons-lang3</artifactId>
+ 			<version>3.5</version>
+ 		</dependency>
+-
++        <dependency>
++            <groupId>org.slf4j</groupId>
++            <artifactId>slf4j-api</artifactId>
++            <version>1.7.28</version>
++        </dependency>
+ 		<dependency>
+-			<groupId>org.apache.logging.log4j</groupId>
+-			<artifactId>log4j-core</artifactId>
+-			<version>2.11.0</version>
++			<groupId>org.slf4j</groupId>
++			<artifactId>slf4j-log4j12</artifactId>
++			<version>1.7.28</version>
++			<scope>test</scope>
+ 		</dependency>
+ 	</dependencies>
+ 
+@@ -84,6 +89,24 @@
+ 			</activation>
+ 			<build>
+ 				<plugins>
++                    <plugin>
++                        <artifactId>maven-assembly-plugin</artifactId>
++                        <version>3.2.0</version>
++                        <configuration>
++                            <descriptorRefs>
++                                <descriptorRef>jar-with-dependencies</descriptorRef>
++                            </descriptorRefs>
++                        </configuration>
++                        <executions>
++                            <execution>
++                                <id>make-assembly</id>
++                                <phase>package</phase>
++                                <goals>
++                                    <goal>single</goal>
++                                </goals>
++                            </execution>
++                        </executions>
++                    </plugin>
+ 					<plugin>
+ 						<groupId>org.apache.maven.plugins</groupId>
+ 						<artifactId>maven-surefire-plugin</artifactId>
+diff --git a/boomerangPDS/src/main/java/boomerang/BoomerangOptions.java b/boomerangPDS/src/main/java/boomerang/BoomerangOptions.java
+index 08164b6e..ceb6ed57 100644
+--- a/boomerangPDS/src/main/java/boomerang/BoomerangOptions.java
++++ b/boomerangPDS/src/main/java/boomerang/BoomerangOptions.java
+@@ -3,7 +3,7 @@
+  * This program and the accompanying materials are made available under the
+  * terms of the Eclipse Public License 2.0 which is available at
+  * http://www.eclipse.org/legal/epl-2.0.
+- *  
++ *
+  * SPDX-License-Identifier: EPL-2.0
+  *
+  * Contributors:
+@@ -11,16 +11,20 @@
+  *******************************************************************************/
+ package boomerang;
+ 
+-import com.google.common.base.Optional;
+-
+ import boomerang.callgraph.ObservableICFG;
+ import boomerang.jimple.AllocVal;
+ import boomerang.jimple.Val;
++import boomerang.solver.AbstractBoomerangSolver;
+ import boomerang.stats.IBoomerangStats;
++import com.google.common.base.Optional;
+ import soot.SootMethod;
+ import soot.Unit;
+ import soot.Value;
+ import soot.jimple.Stmt;
++import soot.toolkits.scalar.Pair;
++import wpds.impl.Weight;
++
++import java.util.List;
+ 
+ public interface BoomerangOptions {
+ 
+@@ -42,8 +46,7 @@ public interface BoomerangOptions {
+ 
+     public boolean isAllocationVal(Value val);
+ 
+-    public Optional<AllocVal> getAllocationVal(SootMethod m, Stmt stmt, Val fact,
+-            ObservableICFG<Unit, SootMethod> icfg);
++    public Optional<AllocVal> getAllocationVal(SootMethod m, Stmt stmt, Val fact, ObservableICFG<Unit, SootMethod> icfg);
+ 
+     public boolean isIgnoredMethod(SootMethod method);
+ 
+@@ -54,9 +57,9 @@ public interface BoomerangOptions {
+     /**
+      * Assume we propagate an object of soot.NullType in variable y and the propagation reaches a statement x = (Object)
+      * y.
+-     * 
++     *
+      * @return If set to true, the propagation will NOT continue in x. This does not match the runtime semantics. At
+-     *         runtime, null can be cast to any RefType! Though a check (null instanceof Object) returns false.
++     * runtime, null can be cast to any RefType! Though a check (null instanceof Object) returns false.
+      */
+     public boolean killNullAtCast();
+ 
+@@ -65,4 +68,7 @@ public interface BoomerangOptions {
+     boolean trackStaticFieldAtEntryPointToClinit();
+ 
+     boolean trackFields();
++
++    public List<Pair<Value, Value>> passTroughCall(Stmt curr, Val fact, AbstractBoomerangSolver<? extends Weight> solver);
++
+ }
+diff --git a/boomerangPDS/src/main/java/boomerang/BoomerangTimeoutException.java b/boomerangPDS/src/main/java/boomerang/BoomerangTimeoutException.java
+index efd6179d..c18ff5dd 100644
+--- a/boomerangPDS/src/main/java/boomerang/BoomerangTimeoutException.java
++++ b/boomerangPDS/src/main/java/boomerang/BoomerangTimeoutException.java
+@@ -13,7 +13,7 @@ package boomerang;
+ 
+ import boomerang.stats.IBoomerangStats;
+ 
+-class BoomerangTimeoutException extends RuntimeException {
++public class BoomerangTimeoutException extends RuntimeException {
+ 
+     private IBoomerangStats stats;
+     private long elapsed;
+diff --git a/boomerangPDS/src/main/java/boomerang/DefaultBoomerangOptions.java b/boomerangPDS/src/main/java/boomerang/DefaultBoomerangOptions.java
+index abed632a..b3a4271a 100644
+--- a/boomerangPDS/src/main/java/boomerang/DefaultBoomerangOptions.java
++++ b/boomerangPDS/src/main/java/boomerang/DefaultBoomerangOptions.java
+@@ -3,7 +3,7 @@
+  * This program and the accompanying materials are made available under the
+  * terms of the Eclipse Public License 2.0 which is available at
+  * http://www.eclipse.org/legal/epl-2.0.
+- *  
++ *
+  * SPDX-License-Identifier: EPL-2.0
+  *
+  * Contributors:
+@@ -16,12 +16,17 @@ import boomerang.callgraph.ObservableICFG;
+ import boomerang.jimple.AllocVal;
+ import boomerang.jimple.Statement;
+ import boomerang.jimple.Val;
++import boomerang.solver.AbstractBoomerangSolver;
+ import boomerang.stats.IBoomerangStats;
+ import boomerang.stats.SimpleBoomerangStats;
+ import com.google.common.base.Optional;
+ import soot.*;
+ import soot.jimple.*;
++import soot.toolkits.scalar.Pair;
++import wpds.impl.Weight;
+ 
++import java.util.ArrayList;
++import java.util.List;
+ import java.util.Objects;
+ import java.util.concurrent.atomic.AtomicReference;
+ 
+@@ -52,15 +57,15 @@ public class DefaultBoomerangOptions implements BoomerangOptions {
+     }
+ 
+     protected boolean isStringAllocationType(Type type) {
+-        return type.toString().equals("java.lang.String") || type.toString().equals("java.lang.StringBuilder")
+-                || type.toString().equals("java.lang.StringBuffer");
++        return type.toString().equals("java.lang.String") || type.toString().equals("java.lang.StringBuilder") || type.toString().equals("java.lang.StringBuffer");
+     }
+ 
+     protected boolean isArrayAllocationVal(Value val) {
+         if (val instanceof NewArrayExpr) {
+             NewArrayExpr expr = (NewArrayExpr) val;
+             return expr.getBaseType() instanceof RefType;
+-        } else if (val instanceof NewMultiArrayExpr) {
++        }
++        else if (val instanceof NewMultiArrayExpr) {
+             return true;
+         }
+         return false;
+@@ -120,13 +125,11 @@ public class DefaultBoomerangOptions implements BoomerangOptions {
+ 
+     @Override
+     public boolean isIgnoredMethod(SootMethod method) {
+-        return trackAnySubclassOfThrowable() && Scene.v().getFastHierarchy()
+-                .canStoreType(method.getDeclaringClass().getType(), Scene.v().getType("java.lang.Throwable"));
++        return trackAnySubclassOfThrowable() && Scene.v().getFastHierarchy().canStoreType(method.getDeclaringClass().getType(), Scene.v().getType("java.lang.Throwable"));
+     }
+ 
+     @Override
+-    public Optional<AllocVal> getAllocationVal(SootMethod m, Stmt stmt, Val fact,
+-            ObservableICFG<Unit, SootMethod> icfg) {
++    public Optional<AllocVal> getAllocationVal(SootMethod m, Stmt stmt, Val fact, ObservableICFG<Unit, SootMethod> icfg) {
+         if (!(stmt instanceof AssignStmt)) {
+             return Optional.absent();
+         }
+@@ -137,7 +140,7 @@ public class DefaultBoomerangOptions implements BoomerangOptions {
+         if (isAllocationVal(as.getRightOp())) {
+             return Optional.of(new AllocVal(as.getLeftOp(), m, as.getRightOp(), new Statement(stmt, m)));
+         }
+-        if (as.containsInvokeExpr()) {
++        if (as.containsInvokeExpr() && !isIgnoredMethod(as.getInvokeExpr().getMethod())) { // added && !isIgnoredMethod(as.getInvokeExpr().getMethod()
+             AtomicReference<AllocVal> returnValue = new AtomicReference<>();
+             icfg.addCalleeListener(new AllocationValCalleeListener(returnValue, as, icfg, m));
+             if (returnValue.get() != null) {
+@@ -153,8 +156,7 @@ public class DefaultBoomerangOptions implements BoomerangOptions {
+         ObservableICFG<Unit, SootMethod> icfg;
+         SootMethod m;
+ 
+-        AllocationValCalleeListener(AtomicReference<AllocVal> returnValue, AssignStmt as,
+-                ObservableICFG<Unit, SootMethod> icfg, SootMethod m) {
++        AllocationValCalleeListener(AtomicReference<AllocVal> returnValue, AssignStmt as, ObservableICFG<Unit, SootMethod> icfg, SootMethod m) {
+             this.returnValue = returnValue;
+             this.as = as;
+             this.icfg = icfg;
+@@ -170,8 +172,7 @@ public class DefaultBoomerangOptions implements BoomerangOptions {
+         public void onCalleeAdded(Unit unit, SootMethod sootMethod) {
+             for (Unit u : icfg.getEndPointsOf(sootMethod)) {
+                 if (u instanceof ReturnStmt && isAllocationVal(((ReturnStmt) u).getOp())) {
+-                    returnValue
+-                            .set(new AllocVal(as.getLeftOp(), m, ((ReturnStmt) u).getOp(), new Statement((Stmt) u, m)));
++                    returnValue.set(new AllocVal(as.getLeftOp(), m, ((ReturnStmt) u).getOp(), new Statement((Stmt) u, m)));
+                 }
+             }
+         }
+@@ -183,8 +184,7 @@ public class DefaultBoomerangOptions implements BoomerangOptions {
+             if (o == null || getClass() != o.getClass())
+                 return false;
+             AllocationValCalleeListener that = (AllocationValCalleeListener) o;
+-            return Objects.equals(returnValue, that.returnValue) && Objects.equals(as, that.as)
+-                    && Objects.equals(m, that.m);
++            return Objects.equals(returnValue, that.returnValue) && Objects.equals(as, that.as) && Objects.equals(m, that.m);
+         }
+ 
+         @Override
+@@ -223,4 +223,9 @@ public class DefaultBoomerangOptions implements BoomerangOptions {
+     public boolean trackFields() {
+         return true;
+     }
++
++    @Override
++    public List<Pair<Value, Value>> passTroughCall(Stmt curr, Val fact, AbstractBoomerangSolver<? extends Weight> solver) {
++        return new ArrayList<>();
++    }
+ }
+diff --git a/boomerangPDS/src/main/java/boomerang/WeightedBoomerang.java b/boomerangPDS/src/main/java/boomerang/WeightedBoomerang.java
+index 86b80916..285aeeec 100644
+--- a/boomerangPDS/src/main/java/boomerang/WeightedBoomerang.java
++++ b/boomerangPDS/src/main/java/boomerang/WeightedBoomerang.java
+@@ -3,7 +3,7 @@
+  * This program and the accompanying materials are made available under the
+  * terms of the Eclipse Public License 2.0 which is available at
+  * http://www.eclipse.org/legal/epl-2.0.
+- *  
++ *
+  * SPDX-License-Identifier: EPL-2.0
+  *
+  * Contributors:
+@@ -15,6 +15,7 @@ import boomerang.callgraph.BackwardsObservableICFG;
+ import boomerang.callgraph.CalleeListener;
+ import boomerang.callgraph.CallerListener;
+ import boomerang.callgraph.ObservableICFG;
++
+ import java.util.Collection;
+ import java.util.HashMap;
+ import java.util.List;
+@@ -23,9 +24,6 @@ import java.util.Map.Entry;
+ import java.util.Set;
+ import java.util.concurrent.TimeUnit;
+ 
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
+-
+ import com.google.common.base.Joiner;
+ import com.google.common.base.Optional;
+ import com.google.common.base.Stopwatch;
+@@ -64,8 +62,8 @@ import com.google.common.collect.Lists;
+ import com.google.common.collect.Sets;
+ import com.google.common.collect.Table;
+ import heros.utilities.DefaultValueMap;
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import soot.*;
+ import soot.jimple.*;
+ import sync.pds.solver.SyncPDSUpdateListener;
+@@ -112,7 +110,7 @@ import java.util.concurrent.TimeUnit;
+ public abstract class WeightedBoomerang<W extends Weight> {
+     public static final boolean DEBUG = false;
+     protected ObservableICFG<Unit, SootMethod> icfg;
+-    private static final Logger logger = LogManager.getLogger();
++    private static final Logger logger = LoggerFactory.getLogger(WeightedBoomerang.class);
+     private Map<Entry<INode<Node<Statement, Val>>, Field>, INode<Node<Statement, Val>>> genField = new HashMap<>();
+     private long lastTick;
+     private IBoomerangStats<W> stats;
+@@ -127,60 +125,54 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (key instanceof BackwardQuery) {
+                 logger.debug("Backward solving query: " + key);
+                 solver = createBackwardSolver((BackwardQuery) key);
+-            } else {
++            }
++            else {
+                 logger.debug("Forward solving query: " + key);
+                 solver = createForwardSolver((ForwardQuery) key);
+             }
+-            solver.getCallAutomaton()
+-                    .registerUnbalancedPopListener(new UnbalancedPopListener<Statement, INode<Val>, W>() {
++            solver.getCallAutomaton().registerUnbalancedPopListener(new UnbalancedPopListener<Statement, INode<Val>, W>() {
++
++                @Override
++                public void unbalancedPop(final INode<Val> returningFact, final Transition<Statement, INode<Val>> trans, final W weight) {
++                    Statement exitStmt = trans.getLabel();
++                    SootMethod callee = exitStmt.getMethod();
++                    if (!callee.isStaticInitializer()) {
++
++                        UnbalancedPopHandler<W> info = new UnbalancedPopHandler<W>(returningFact, trans, weight);
++                        icfg().addCallerListener(new UnbalancedPopCallerListener(callee, info, key, solver));
++                    }
++                    else {
++                        for (SootMethod entryPoint : Scene.v().getEntryPoints()) {
++                            for (Unit ep : WeightedBoomerang.this.icfg().getStartPointsOf(entryPoint)) {
++                                final Statement callStatement = new Statement((Stmt) ep, WeightedBoomerang.this.icfg().getMethodOf(ep));
++                                solver.submit(callStatement.getMethod(), new Runnable() {
++                                    @Override
++                                    public void run() {
++                                        Val unbalancedFact = returningFact.fact().asUnbalanced(callStatement);
++                                        SingleNode<Val> unbalancedState = new SingleNode<Val>(unbalancedFact);
++                                        solver.getCallAutomaton().addUnbalancedState(unbalancedState);
++                                        solver.getCallAutomaton()
++                                                .addWeightForTransition(new Transition<Statement, INode<Val>>(solver.getCallAutomaton().getInitialState(), callStatement, unbalancedState),
++                                                                        solver.getCallAutomaton().getOne());
+ 
+-                        @Override
+-                        public void unbalancedPop(final INode<Val> returningFact,
+-                                final Transition<Statement, INode<Val>> trans, final W weight) {
+-                            Statement exitStmt = trans.getLabel();
+-                            SootMethod callee = exitStmt.getMethod();
+-                            if (!callee.isStaticInitializer()) {
+-
+-                                UnbalancedPopHandler<W> info = new UnbalancedPopHandler<W>(returningFact, trans,
+-                                        weight);
+-                                icfg().addCallerListener(new UnbalancedPopCallerListener(callee, info, key, solver));
+-                            } else {
+-                                for (SootMethod entryPoint : Scene.v().getEntryPoints()) {
+-                                    for (Unit ep : WeightedBoomerang.this.icfg().getStartPointsOf(entryPoint)) {
+-                                        final Statement callStatement = new Statement((Stmt) ep,
+-                                                WeightedBoomerang.this.icfg().getMethodOf(ep));
+-                                        solver.submit(callStatement.getMethod(), new Runnable() {
+-                                            @Override
+-                                            public void run() {
+-                                                Val unbalancedFact = returningFact.fact().asUnbalanced(callStatement);
+-                                                SingleNode<Val> unbalancedState = new SingleNode<Val>(unbalancedFact);
+-                                                solver.getCallAutomaton().addUnbalancedState(unbalancedState);
+-                                                solver.getCallAutomaton().addWeightForTransition(
+-                                                        new Transition<Statement, INode<Val>>(
+-                                                                solver.getCallAutomaton().getInitialState(),
+-                                                                callStatement, unbalancedState),
+-                                                        solver.getCallAutomaton().getOne());
+-
+-                                            }
+-                                        });
+                                     }
+-                                }
++                                });
+                             }
+                         }
+-                    });
++                    }
++                }
++            });
+             stats.registerSolver(key, solver);
+             solver.getCallAutomaton().registerListener(new WPAUpdateListener<Statement, INode<Val>, W>() {
+                 @Override
+-                public void onWeightAdded(Transition<Statement, INode<Val>> t, W w,
+-                        WeightedPAutomaton<Statement, INode<Val>, W> aut) {
++                public void onWeightAdded(Transition<Statement, INode<Val>> t, W w, WeightedPAutomaton<Statement, INode<Val>, W> aut) {
+                     checkTimeout();
+                 }
+             });
+             solver.getFieldAutomaton().registerListener(new WPAUpdateListener<Field, INode<Node<Statement, Val>>, W>() {
+ 
+                 @Override
+-                public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w,
+-                        WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
++                public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w, WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
+                     checkTimeout();
+                 }
+             });
+@@ -195,11 +187,11 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         }
+     };
+ 
+-    private void registerUnbalancedPopListener(Node<Statement, AbstractBoomerangSolver<W>> unbalancedPopPair,
+-            UnbalancedPopHandler<W> unbalancedPopInfo) {
++    private void registerUnbalancedPopListener(Node<Statement, AbstractBoomerangSolver<W>> unbalancedPopPair, UnbalancedPopHandler<W> unbalancedPopInfo) {
+         if (unbalancedPopPairs.contains(unbalancedPopPair)) {
+             unbalancedPopInfo.trigger(unbalancedPopPair.stmt(), unbalancedPopPair.fact());
+-        } else {
++        }
++        else {
+             unbalancedListeners.put(unbalancedPopPair, unbalancedPopInfo);
+         }
+ 
+@@ -220,14 +212,12 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         }
+     }
+ 
+-    Multimap<Node<Statement, AbstractBoomerangSolver<W>>, UnbalancedPopHandler<W>> unbalancedListeners = HashMultimap
+-            .create();
++    Multimap<Node<Statement, AbstractBoomerangSolver<W>>, UnbalancedPopHandler<W>> unbalancedListeners = HashMultimap.create();
+     Set<Node<Statement, AbstractBoomerangSolver<W>>> unbalancedPopPairs = Sets.newHashSet();
+ 
+     private void triggerUnbalancedPop(Node<Statement, AbstractBoomerangSolver<W>> unbalancedPopPair) {
+         if (unbalancedPopPairs.add(unbalancedPopPair)) {
+-            for (UnbalancedPopHandler<W> unbalancedPopInfo : Lists
+-                    .newArrayList(unbalancedListeners.get(unbalancedPopPair))) {
++            for (UnbalancedPopHandler<W> unbalancedPopInfo : Lists.newArrayList(unbalancedListeners.get(unbalancedPopPair))) {
+                 unbalancedPopInfo.trigger(unbalancedPopPair.stmt(), unbalancedPopPair.fact());
+             }
+         }
+@@ -264,8 +254,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         this.options = options;
+         this.stats = options.statsFactory();
+         if (!BoomerangPretransformer.v().isApplied()) {
+-            throw new RuntimeException(
+-                    "Using WeightedBoomerang requires a call to BoomerangPretransformer.v().apply() prior constructing the ICFG");
++            throw new RuntimeException("Using WeightedBoomerang requires a call to BoomerangPretransformer.v().apply() prior constructing the ICFG");
+         }
+     }
+ 
+@@ -274,19 +263,20 @@ public abstract class WeightedBoomerang<W extends Weight> {
+     }
+ 
+     protected AbstractBoomerangSolver<W> createBackwardSolver(final BackwardQuery backwardQuery) {
+-        BackwardBoomerangSolver<W> solver = new BackwardBoomerangSolver<W>(bwicfg(), backwardQuery, genField, options,
+-                createCallSummaries(backwardQuery, backwardCallSummaries),
+-                createFieldSummaries(backwardQuery, backwardFieldSummaries)) {
++        BackwardBoomerangSolver<W> solver = new BackwardBoomerangSolver<W>(bwicfg(),
++                                                                           backwardQuery,
++                                                                           genField,
++                                                                           options,
++                                                                           createCallSummaries(backwardQuery, backwardCallSummaries),
++                                                                           createFieldSummaries(backwardQuery, backwardFieldSummaries)) {
+ 
+             @Override
+-            protected Collection<? extends State> computeCallFlow(SootMethod caller, Statement returnSite,
+-                    Statement callSite, InvokeExpr invokeExpr, Val fact, SootMethod callee, Stmt calleeSp) {
++            protected Collection<? extends State> computeCallFlow(SootMethod caller, Statement returnSite, Statement callSite, InvokeExpr invokeExpr, Val fact, SootMethod callee, Stmt calleeSp) {
+                 return super.computeCallFlow(caller, returnSite, callSite, invokeExpr, fact, callee, calleeSp);
+             }
+ 
+             @Override
+-            protected Collection<? extends State> getEmptyCalleeFlow(SootMethod caller, Stmt callSite, Val value,
+-                    Stmt returnSite) {
++            protected Collection<? extends State> getEmptyCalleeFlow(SootMethod caller, Stmt callSite, Val value, Stmt returnSite) {
+                 return backwardEmptyCalleeFlow.getEmptyCalleeFlow(caller, callSite, value, returnSite);
+             }
+ 
+@@ -325,26 +315,25 @@ public abstract class WeightedBoomerang<W extends Weight> {
+                     });
+                 }
+                 if (isFieldStore(node.stmt())) {
+-                } else if (isArrayLoad(node.stmt())) {
++                }
++                else if (isArrayLoad(node.stmt())) {
+                     backwardHandleFieldRead(node, createArrayFieldLoad(node.stmt()), backwardQuery);
+-                } else if (isFieldLoad(node.stmt())) {
++                }
++                else if (isFieldLoad(node.stmt())) {
+                     backwardHandleFieldRead(node, createFieldLoad(node.stmt()), backwardQuery);
+                 }
+                 if (isBackwardEnterCall(node.stmt())) {
+                     // TODO
+                 }
+-                if (options.trackStaticFieldAtEntryPointToClinit() && node.fact().isStatic()
+-                        && isFirstStatementOfEntryPoint(node.stmt())) {
++                if (options.trackStaticFieldAtEntryPointToClinit() && node.fact().isStatic() && isFirstStatementOfEntryPoint(node.stmt())) {
+                     StaticFieldVal val = (StaticFieldVal) node.fact();
+                     for (SootMethod m : val.field().getDeclaringClass().getMethods()) {
+                         if (m.isStaticInitializer()) {
+                             solver.addReachable(m);
+                             for (Unit ep : icfg().getEndPointsOf(m)) {
+                                 StaticFieldVal newVal = new StaticFieldVal(val.value(), val.field(), m);
+-                                solver.addNormalCallFlow(node,
+-                                        new Node<Statement, Val>(new Statement((Stmt) ep, m), newVal));
+-                                solver.addNormalFieldFlow(node,
+-                                        new Node<Statement, Val>(new Statement((Stmt) ep, m), newVal));
++                                solver.addNormalCallFlow(node, new Node<Statement, Val>(new Statement((Stmt) ep, m), newVal));
++                                solver.addNormalFieldFlow(node, new Node<Statement, Val>(new Statement((Stmt) ep, m), newVal));
+                             }
+                         }
+                     }
+@@ -394,13 +383,15 @@ public abstract class WeightedBoomerang<W extends Weight> {
+     }
+ 
+     protected ForwardBoomerangSolver<W> createForwardSolver(final ForwardQuery sourceQuery) {
+-        final ForwardBoomerangSolver<W> solver = new ForwardBoomerangSolver<W>(icfg(), sourceQuery, genField, options,
+-                createCallSummaries(sourceQuery, forwardCallSummaries),
+-                createFieldSummaries(sourceQuery, forwardFieldSummaries)) {
++        final ForwardBoomerangSolver<W> solver = new ForwardBoomerangSolver<W>(icfg(),
++                                                                               sourceQuery,
++                                                                               genField,
++                                                                               options,
++                                                                               createCallSummaries(sourceQuery, forwardCallSummaries),
++                                                                               createFieldSummaries(sourceQuery, forwardFieldSummaries)) {
+ 
+             @Override
+-            protected Collection<? extends State> getEmptyCalleeFlow(SootMethod caller, Stmt callSite, Val value,
+-                    Stmt returnSite) {
++            protected Collection<? extends State> getEmptyCalleeFlow(SootMethod caller, Stmt callSite, Val value, Stmt returnSite) {
+                 return forwardEmptyCalleeFlow.getEmptyCalleeFlow(caller, callSite, value, returnSite);
+             }
+ 
+@@ -437,13 +428,16 @@ public abstract class WeightedBoomerang<W extends Weight> {
+                 }
+                 if (isFieldStore(node.stmt())) {
+                     forwardHandleFieldWrite(node, createFieldStore(node.stmt()), sourceQuery);
+-                } else if (isArrayStore(node.stmt())) {
++                }
++                else if (isArrayStore(node.stmt())) {
+                     if (options.arrayFlows()) {
+                         forwardHandleFieldWrite(node, createArrayFieldStore(node.stmt()), sourceQuery);
+                     }
+-                } else if (isFieldLoad(node.stmt())) {
++                }
++                else if (isFieldLoad(node.stmt())) {
+                     forwardHandleFieldLoad(node, createFieldLoad(node.stmt()), sourceQuery);
+-                } else if (isArrayLoad(node.stmt())) {
++                }
++                else if (isArrayLoad(node.stmt())) {
+                     forwardHandleFieldLoad(node, createArrayFieldLoad(node.stmt()), sourceQuery);
+                 }
+                 if (isBackwardEnterCall(node.stmt())) {
+@@ -455,8 +449,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         return solver;
+     }
+ 
+-    private NestedWeightedPAutomatons<Statement, INode<Val>, W> createCallSummaries(final Query sourceQuery,
+-            final NestedWeightedPAutomatons<Statement, INode<Val>, W> summaries) {
++    private NestedWeightedPAutomatons<Statement, INode<Val>, W> createCallSummaries(final Query sourceQuery, final NestedWeightedPAutomatons<Statement, INode<Val>, W> summaries) {
+         return new NestedWeightedPAutomatons<Statement, INode<Val>, W>() {
+ 
+             @Override
+@@ -474,19 +467,16 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         };
+     }
+ 
+-    private NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W> createFieldSummaries(final Query query,
+-            final NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W> summaries) {
++    private NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W> createFieldSummaries(final Query query, final NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W> summaries) {
+         return new NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W>() {
+ 
+             @Override
+-            public void putSummaryAutomaton(INode<Node<Statement, Val>> target,
+-                    WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
++            public void putSummaryAutomaton(INode<Node<Statement, Val>> target, WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
+                 summaries.putSummaryAutomaton(target, aut);
+             }
+ 
+             @Override
+-            public WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> getSummaryAutomaton(
+-                    INode<Node<Statement, Val>> target) {
++            public WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> getSummaryAutomaton(INode<Node<Statement, Val>> target) {
+                 if (target.fact().equals(query.asNode())) {
+                     return queryToSolvers.getOrCreate(query).getFieldAutomaton();
+                 }
+@@ -506,8 +496,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         InstanceFieldRef ifr = (InstanceFieldRef) as.getRightOp();
+         Val base = new Val(ifr.getBase(), icfg().getMethodOf(as));
+         Field field = new Field(ifr.getField());
+-        return fieldReads
+-                .getOrCreate(new FieldReadPOI(s, base, field, new Val(as.getLeftOp(), icfg().getMethodOf(as))));
++        return fieldReads.getOrCreate(new FieldReadPOI(s, base, field, new Val(as.getLeftOp(), icfg().getMethodOf(as))));
+     }
+ 
+     protected FieldReadPOI createArrayFieldLoad(Statement s) {
+@@ -582,30 +571,24 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         return false;
+     }
+ 
+-    protected void backwardHandleFieldRead(final Node<Statement, Val> node, FieldReadPOI fieldRead,
+-            final BackwardQuery sourceQuery) {
++    protected void backwardHandleFieldRead(final Node<Statement, Val> node, FieldReadPOI fieldRead, final BackwardQuery sourceQuery) {
+         if (node.fact().equals(fieldRead.getStoredVar())) {
+             fieldRead.addFlowAllocation(sourceQuery);
+         }
+     }
+ 
+-    protected void forwardHandleFieldWrite(final Node<Statement, Val> node, final FieldWritePOI fieldWritePoi,
+-            final ForwardQuery sourceQuery) {
++    protected void forwardHandleFieldWrite(final Node<Statement, Val> node, final FieldWritePOI fieldWritePoi, final ForwardQuery sourceQuery) {
+         BackwardQuery backwardQuery = new BackwardQuery(node.stmt(), fieldWritePoi.getBaseVar());
+         if (node.fact().equals(fieldWritePoi.getStoredVar())) {
+-            backwardSolveUnderScope(backwardQuery, sourceQuery, node);
+-            queryToSolvers.get(sourceQuery).getFieldAutomaton()
+-                    .registerListener(new ForwardHandleFieldWrite(sourceQuery, fieldWritePoi, node.stmt()));
++            // backwardSolveUnderScope(backwardQuery, sourceQuery, node); patch
++            queryToSolvers.get(sourceQuery).getFieldAutomaton().registerListener(new ForwardHandleFieldWrite(sourceQuery, fieldWritePoi, node.stmt()));
+         }
+         if (node.fact().equals(fieldWritePoi.getBaseVar())) {
+-            queryToSolvers.getOrCreate(sourceQuery).getFieldAutomaton()
+-                    .registerListener(new TriggerBaseAllocationAtFieldWrite(new SingleNode<Node<Statement, Val>>(node),
+-                            fieldWritePoi, sourceQuery));
++            queryToSolvers.getOrCreate(sourceQuery).getFieldAutomaton().registerListener(new TriggerBaseAllocationAtFieldWrite(new SingleNode<Node<Statement, Val>>(node), fieldWritePoi, sourceQuery));
+         }
+     }
+ 
+-    public BackwardBoomerangResults<W> backwardSolveUnderScope(BackwardQuery backwardQuery, ForwardQuery forwardQuery,
+-            Node<Statement, Val> node) {
++    public BackwardBoomerangResults<W> backwardSolveUnderScope(BackwardQuery backwardQuery, ForwardQuery forwardQuery, Node<Statement, Val> node) {
+         scopedQueries.add(backwardQuery);
+         boolean timedout = false;
+         try {
+@@ -619,8 +602,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+                 }
+             });
+ 
+-            fwSolver.getCallAutomaton().registerListener(new StackListener<Statement, INode<Val>, W>(
+-                    fwSolver.getCallAutomaton(), new SingleNode<>(node.fact()), node.stmt()) {
++            fwSolver.getCallAutomaton().registerListener(new StackListener<Statement, INode<Val>, W>(fwSolver.getCallAutomaton(), new SingleNode<>(node.fact()), node.stmt()) {
+ 
+                 @Override
+                 public void stackElement(Statement callSite) {
+@@ -630,14 +612,13 @@ public abstract class WeightedBoomerang<W extends Weight> {
+                 @Override
+                 public void anyContext(Statement end) {
+                     for (Unit sP : icfg().getStartPointsOf(end.getMethod())) {
+-                        bwSolver.registerStatementCallTransitionListener(new CanUnbalancedReturn(end.getMethod(),
+-                                new Statement((Stmt) sP, end.getMethod()), bwSolver));
++                        bwSolver.registerStatementCallTransitionListener(new CanUnbalancedReturn(end.getMethod(), new Statement((Stmt) sP, end.getMethod()), bwSolver));
+                     }
+                 }
+             });
+         } catch (BoomerangTimeoutException e) {
+             timedout = true;
+-            cleanup();
++            //cleanup();
+         }
+ 
+         return new BackwardBoomerangResults<W>(backwardQuery, timedout, this.queryToSolvers, getStats(), analysisWatch);
+@@ -651,8 +632,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         this.unbalancedListeners.clear();
+     }
+ 
+-    public BackwardBoomerangResults<W> backwardSolveUnderScope(BackwardQuery backwardQuery,
+-            IContextRequester requester) {
++    public BackwardBoomerangResults<W> backwardSolveUnderScope(BackwardQuery backwardQuery, IContextRequester requester) {
+         scopedQueries.add(backwardQuery);
+         boolean timedout = false;
+         try {
+@@ -665,8 +645,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             final AbstractBoomerangSolver<W> bwSolver = queryToSolvers.getOrCreate(backwardQuery);
+             Collection<Context> callSiteOf = requester.getCallSiteOf(requester.initialContext(backwardQuery.stmt()));
+             for (Context c : callSiteOf) {
+-                bwSolver.registerListener(
+-                        new CanUnbalancedReturnToCallSite(backwardQuery.stmt().getMethod(), c, bwSolver, requester));
++                bwSolver.registerListener(new CanUnbalancedReturnToCallSite(backwardQuery.stmt().getMethod(), c, bwSolver, requester));
+             }
+             if (analysisWatch.isRunning()) {
+                 analysisWatch.stop();
+@@ -685,8 +664,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         private final Query key;
+         private final AbstractBoomerangSolver<W> solver;
+ 
+-        private UnbalancedPopCallerListener(SootMethod callee, UnbalancedPopHandler<W> info, Query key,
+-                AbstractBoomerangSolver<W> solver) {
++        private UnbalancedPopCallerListener(SootMethod callee, UnbalancedPopHandler<W> info, Query key, AbstractBoomerangSolver<W> solver) {
+             this.callee = callee;
+             this.info = info;
+             this.key = key;
+@@ -702,8 +680,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         public void onCallerAdded(Unit callSite, SootMethod m) {
+             if (!((Stmt) callSite).containsInvokeExpr())
+                 return;
+-            final Statement callStatement = new Statement((Stmt) callSite,
+-                    WeightedBoomerang.this.icfg().getMethodOf(callSite));
++            final Statement callStatement = new Statement((Stmt) callSite, WeightedBoomerang.this.icfg().getMethodOf(callSite));
+             Node<Statement, AbstractBoomerangSolver<W>> solverPair = new Node<>(callStatement, solver);
+             registerUnbalancedPopListener(solverPair, info);
+             if (callee.isStatic() || !scopedQueries.contains(key)) {
+@@ -737,22 +714,26 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (callee == null) {
+                 if (other.callee != null)
+                     return false;
+-            } else if (!callee.equals(other.callee))
++            }
++            else if (!callee.equals(other.callee))
+                 return false;
+             if (info == null) {
+                 if (other.info != null)
+                     return false;
+-            } else if (!info.equals(other.info))
++            }
++            else if (!info.equals(other.info))
+                 return false;
+             if (key == null) {
+                 if (other.key != null)
+                     return false;
+-            } else if (!key.equals(other.key))
++            }
++            else if (!key.equals(other.key))
+                 return false;
+             if (solver == null) {
+                 if (other.solver != null)
+                     return false;
+-            } else if (!solver.equals(other.solver))
++            }
++            else if (!solver.equals(other.solver))
+                 return false;
+             return true;
+         }
+@@ -771,8 +752,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         private Context callSite;
+         private IContextRequester req;
+ 
+-        public CanUnbalancedReturnToCallSite(SootMethod method, Context callSite, AbstractBoomerangSolver<W> bwSolver,
+-                IContextRequester req) {
++        public CanUnbalancedReturnToCallSite(SootMethod method, Context callSite, AbstractBoomerangSolver<W> bwSolver, IContextRequester req) {
+             this.method = method;
+             this.callSite = callSite;
+             this.bwSolver = bwSolver;
+@@ -787,8 +767,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+                 bwSolver.addReachable(callSite.getStmt().getMethod());
+                 triggerUnbalancedPop(solverPair);
+                 for (Context parent : req.getCallSiteOf(callSite)) {
+-                    bwSolver.registerListener(
+-                            new CanUnbalancedReturnToCallSite(callSite.getStmt().getMethod(), parent, bwSolver, req));
++                    bwSolver.registerListener(new CanUnbalancedReturnToCallSite(callSite.getStmt().getMethod(), parent, bwSolver, req));
+                 }
+             }
+         }
+@@ -818,17 +797,20 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (bwSolver == null) {
+                 if (other.bwSolver != null)
+                     return false;
+-            } else if (!bwSolver.equals(other.bwSolver))
++            }
++            else if (!bwSolver.equals(other.bwSolver))
+                 return false;
+             if (method == null) {
+                 if (other.method != null)
+                     return false;
+-            } else if (!method.equals(other.method))
++            }
++            else if (!method.equals(other.method))
+                 return false;
+             if (callSite == null) {
+                 if (other.callSite != null)
+                     return false;
+-            } else if (!callSite.equals(other.callSite))
++            }
++            else if (!callSite.equals(other.callSite))
+                 return false;
+             return true;
+         }
+@@ -857,13 +839,11 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         public void onCallerAdded(Unit callSite, SootMethod m) {
+             if (!((Stmt) callSite).containsInvokeExpr())
+                 return;
+-            final Statement callStatement = new Statement((Stmt) callSite,
+-                    WeightedBoomerang.this.icfg().getMethodOf(callSite));
++            final Statement callStatement = new Statement((Stmt) callSite, WeightedBoomerang.this.icfg().getMethodOf(callSite));
+             Node<Statement, AbstractBoomerangSolver<W>> solverPair = new Node<>(callStatement, bwSolver);
+             triggerUnbalancedPop(solverPair);
+             for (Unit sP : icfg().getStartPointsOf(callStatement.getMethod())) {
+-                bwSolver.registerStatementCallTransitionListener(new CanUnbalancedReturn(callStatement.getMethod(),
+-                        new Statement((Stmt) sP, callStatement.getMethod()), bwSolver));
++                bwSolver.registerStatementCallTransitionListener(new CanUnbalancedReturn(callStatement.getMethod(), new Statement((Stmt) sP, callStatement.getMethod()), bwSolver));
+             }
+         }
+     }
+@@ -912,12 +892,14 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (bwSolver == null) {
+                 if (other.bwSolver != null)
+                     return false;
+-            } else if (!bwSolver.equals(other.bwSolver))
++            }
++            else if (!bwSolver.equals(other.bwSolver))
+                 return false;
+             if (startPoint == null) {
+                 if (other.startPoint != null)
+                     return false;
+-            } else if (!startPoint.equals(other.startPoint))
++            }
++            else if (!startPoint.equals(other.startPoint))
+                 return false;
+             return true;
+         }
+@@ -933,16 +915,14 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         private final AbstractPOI<Statement, Val, Field> fieldWritePoi;
+         private final Statement stmt;
+ 
+-        private ForwardHandleFieldWrite(Query sourceQuery, AbstractPOI<Statement, Val, Field> fieldWritePoi,
+-                Statement statement) {
++        private ForwardHandleFieldWrite(Query sourceQuery, AbstractPOI<Statement, Val, Field> fieldWritePoi, Statement statement) {
+             this.sourceQuery = sourceQuery;
+             this.fieldWritePoi = fieldWritePoi;
+             this.stmt = statement;
+         }
+ 
+         @Override
+-        public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w,
+-                WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
++        public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w, WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
+             if (t.getStart() instanceof GeneratedState)
+                 return;
+             if (t.getStart().fact().stmt().equals(stmt) && t.getLabel().equals(Field.empty())) {
+@@ -974,12 +954,14 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (sourceQuery == null) {
+                 if (other.sourceQuery != null)
+                     return false;
+-            } else if (!sourceQuery.equals(other.sourceQuery))
++            }
++            else if (!sourceQuery.equals(other.sourceQuery))
+                 return false;
+             if (stmt == null) {
+                 if (other.stmt != null)
+                     return false;
+-            } else if (!stmt.equals(other.stmt))
++            }
++            else if (!stmt.equals(other.stmt))
+                 return false;
+             return true;
+         }
+@@ -995,24 +977,21 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         private final PointOfIndirection<Statement, Val, Field> fieldWritePoi;
+         private final ForwardQuery sourceQuery;
+ 
+-        public TriggerBaseAllocationAtFieldWrite(INode<Node<Statement, Val>> state,
+-                PointOfIndirection<Statement, Val, Field> fieldWritePoi, ForwardQuery sourceQuery) {
++        public TriggerBaseAllocationAtFieldWrite(INode<Node<Statement, Val>> state, PointOfIndirection<Statement, Val, Field> fieldWritePoi, ForwardQuery sourceQuery) {
+             super(state);
+             this.fieldWritePoi = fieldWritePoi;
+             this.sourceQuery = sourceQuery;
+         }
+ 
+         @Override
+-        public void onOutTransitionAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w,
+-                WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
++        public void onOutTransitionAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w, WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
+             if (isAllocationNode(t.getTarget().fact().fact(), sourceQuery)) {
+                 fieldWritePoi.addBaseAllocation(sourceQuery);
+             }
+         }
+ 
+         @Override
+-        public void onInTransitionAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w,
+-                WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
++        public void onInTransitionAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w, WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
+         }
+ 
+         @Override
+@@ -1039,12 +1018,14 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (fieldWritePoi == null) {
+                 if (other.fieldWritePoi != null)
+                     return false;
+-            } else if (!fieldWritePoi.equals(other.fieldWritePoi))
++            }
++            else if (!fieldWritePoi.equals(other.fieldWritePoi))
+                 return false;
+             if (sourceQuery == null) {
+                 if (other.sourceQuery != null)
+                     return false;
+-            } else if (!sourceQuery.equals(other.sourceQuery))
++            }
++            else if (!sourceQuery.equals(other.sourceQuery))
+                 return false;
+             return true;
+         }
+@@ -1055,12 +1036,9 @@ public abstract class WeightedBoomerang<W extends Weight> {
+ 
+     }
+ 
+-    private void forwardHandleFieldLoad(final Node<Statement, Val> node, final FieldReadPOI fieldReadPoi,
+-            final ForwardQuery sourceQuery) {
++    private void forwardHandleFieldLoad(final Node<Statement, Val> node, final FieldReadPOI fieldReadPoi, final ForwardQuery sourceQuery) {
+         if (node.fact().equals(fieldReadPoi.getBaseVar())) {
+-            queryToSolvers.getOrCreate(sourceQuery).getFieldAutomaton()
+-                    .registerListener(new TriggerBaseAllocationAtFieldWrite(new SingleNode<Node<Statement, Val>>(node),
+-                            fieldReadPoi, sourceQuery));
++            queryToSolvers.getOrCreate(sourceQuery).getFieldAutomaton().registerListener(new TriggerBaseAllocationAtFieldWrite(new SingleNode<Node<Statement, Val>>(node), fieldReadPoi, sourceQuery));
+         }
+     }
+ 
+@@ -1085,10 +1063,11 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             logger.debug("Terminated forward analysis of: {}", query);
+         } catch (BoomerangTimeoutException e) {
+             timedout = true;
+-            cleanup();
+-            logger.debug("Timeout of query: {}", query);
++            //cleanup();
++            logger.warn("Timeout of query: {}", query);
++        } catch (StackOverflowError e){
++            logger.error("Stack overflow");
+         }
+-
+         if (analysisWatch.isRunning()) {
+             analysisWatch.stop();
+         }
+@@ -1096,6 +1075,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+     }
+ 
+     public BackwardBoomerangResults<W> solve(BackwardQuery query) {
++        analysisWatch.reset();
+         icfg().addUnbalancedMethod(query.stmt().getMethod());
+         return solve(query, true);
+     }
+@@ -1111,8 +1091,10 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             logger.debug("Terminated backward analysis of: {}", query);
+         } catch (BoomerangTimeoutException e) {
+             timedout = true;
+-            cleanup();
+-            logger.debug("Timeout of query: {}", query);
++            // cleanup();
++            logger.warn("Timeout of query: {}", query);
++        } catch (StackOverflowError e){
++            logger.error("Stack overflow");
+         }
+         if (timing && analysisWatch.isRunning()) {
+             analysisWatch.stop();
+@@ -1138,12 +1120,9 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (isMultiArrayAllocation(unit.get()) && options.arrayFlows()) {
+                 // TODO fix; adjust as below;
+                 SingleNode<Node<Statement, Val>> sourveVal = new SingleNode<Node<Statement, Val>>(query.asNode());
+-                GeneratedState<Node<Statement, Val>, Field> genState = new GeneratedState<Node<Statement, Val>, Field>(
+-                        sourveVal, Field.array());
+-                insertTransition(solver.getFieldAutomaton(),
+-                        new Transition<Field, INode<Node<Statement, Val>>>(sourveVal, Field.array(), genState));
+-                insertTransition(solver.getFieldAutomaton(), new Transition<Field, INode<Node<Statement, Val>>>(
+-                        genState, Field.empty(), solver.getFieldAutomaton().getInitialState()));
++                GeneratedState<Node<Statement, Val>, Field> genState = new GeneratedState<Node<Statement, Val>, Field>(sourveVal, Field.array());
++                insertTransition(solver.getFieldAutomaton(), new Transition<Field, INode<Node<Statement, Val>>>(sourveVal, Field.array(), genState));
++                insertTransition(solver.getFieldAutomaton(), new Transition<Field, INode<Node<Statement, Val>>>(genState, Field.empty(), solver.getFieldAutomaton().getInitialState()));
+             }
+             if (isStringAllocation(unit.get())) {
+                 // Scene.v().forceResolve("java.lang.String",
+@@ -1151,19 +1130,19 @@ public abstract class WeightedBoomerang<W extends Weight> {
+                 SootClass stringClass = Scene.v().getSootClass("java.lang.String");
+                 if (stringClass.declaresField("char[] value")) {
+                     SootField valueField = stringClass.getField("char[] value");
++                    // SootField valueField = stringClass.getFieldByName("value");
+                     SingleNode<Node<Statement, Val>> s = new SingleNode<Node<Statement, Val>>(query.asNode());
+-                    INode<Node<Statement, Val>> irState = solver.getFieldAutomaton().createState(s,
+-                            new Field(valueField));
+-                    insertTransition(solver.getFieldAutomaton(), new Transition<Field, INode<Node<Statement, Val>>>(
+-                            new SingleNode<Node<Statement, Val>>(query.asNode()), new Field(valueField), irState));
+-                    insertTransition(solver.getFieldAutomaton(), new Transition<Field, INode<Node<Statement, Val>>>(
+-                            irState, Field.empty(), solver.getFieldAutomaton().getInitialState()));
++                    INode<Node<Statement, Val>> irState = solver.getFieldAutomaton().createState(s, new Field(valueField));
++                    insertTransition(solver.getFieldAutomaton(),
++                                     new Transition<Field, INode<Node<Statement, Val>>>(new SingleNode<Node<Statement, Val>>(query.asNode()), new Field(valueField), irState));
++                    insertTransition(solver.getFieldAutomaton(), new Transition<Field, INode<Node<Statement, Val>>>(irState, Field.empty(), solver.getFieldAutomaton().getInitialState()));
+                 }
+             }
+             if (query instanceof WeightedForwardQuery) {
+                 WeightedForwardQuery<W> q = (WeightedForwardQuery<W>) query;
+                 solver.solve(q.asNode(), q.weight());
+-            } else {
++            }
++            else {
+                 solver.solve(query.asNode());
+             }
+         }
+@@ -1177,8 +1156,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         return false;
+     }
+ 
+-    private boolean insertTransition(final WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut,
+-            Transition<Field, INode<Node<Statement, Val>>> transition) {
++    private boolean insertTransition(final WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut, Transition<Field, INode<Node<Statement, Val>>> transition) {
+         if (!aut.nested()) {
+             return aut.addTransition(transition);
+         }
+@@ -1189,27 +1167,22 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             aut.registerListener(new WPAUpdateListener<Field, INode<Node<Statement, Val>>, W>() {
+ 
+                 @Override
+-                public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w,
+-                        WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
++                public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w, WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
+                     if (t.getStart() instanceof GeneratedState) {
+-                        WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> n = forwardFieldSummaries
+-                                .getSummaryAutomaton(t.getStart());
++                        WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> n = forwardFieldSummaries.getSummaryAutomaton(t.getStart());
+                         aut.addNestedAutomaton(n);
+                     }
+                 }
+             });
+             return aut.addTransition(transition);
+         }
+-        final WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> nested = forwardFieldSummaries
+-                .getSummaryAutomaton(target);
++        final WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> nested = forwardFieldSummaries.getSummaryAutomaton(target);
+         nested.registerListener(new WPAUpdateListener<Field, INode<Node<Statement, Val>>, W>() {
+ 
+             @Override
+-            public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w,
+-                    WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
++            public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w, WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
+                 if (t.getStart() instanceof GeneratedState) {
+-                    WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> n = forwardFieldSummaries
+-                            .getSummaryAutomaton(t.getStart());
++                    WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> n = forwardFieldSummaries.getSummaryAutomaton(t.getStart());
+                     aut.addNestedAutomaton(n);
+                 }
+             }
+@@ -1230,14 +1203,16 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         @Override
+         public void execute(final ForwardQuery baseAllocation, final Query flowAllocation) {
+             if (flowAllocation instanceof BackwardQuery) {
+-            } else if (flowAllocation instanceof ForwardQuery) {
++            }
++            else if (flowAllocation instanceof ForwardQuery) {
+                 AbstractBoomerangSolver<W> baseSolver = queryToSolvers.get(baseAllocation);
+                 AbstractBoomerangSolver<W> flowSolver = queryToSolvers.get(flowAllocation);
+-                ExecuteImportFieldStmtPOI<W> exec = new ExecuteImportFieldStmtPOI<W>(WeightedBoomerang.this, baseSolver,
+-                        flowSolver, FieldWritePOI.this, getStmt()) {
++                ExecuteImportFieldStmtPOI<W> exec = new ExecuteImportFieldStmtPOI<W>(WeightedBoomerang.this, baseSolver, flowSolver, FieldWritePOI.this, getStmt()) {
+                     public void activate(INode<Node<Statement, Val>> start) {
+                         activateAllPois(new SolverPair(flowSolver, baseSolver), start);
+-                    };
++                    }
++
++                    ;
+                 };
+                 registerActivationListener(new SolverPair(flowSolver, baseSolver), exec);
+                 exec.solve();
+@@ -1257,15 +1232,17 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (WeightedBoomerang.this instanceof WholeProgramBoomerang)
+                 throw new RuntimeException("should not be invoked!");
+             if (flowAllocation instanceof ForwardQuery) {
+-            } else if (flowAllocation instanceof BackwardQuery) {
++            }
++            else if (flowAllocation instanceof BackwardQuery) {
+                 AbstractBoomerangSolver<W> baseSolver = queryToSolvers.get(baseAllocation);
+                 AbstractBoomerangSolver<W> flowSolver = queryToSolvers.get(flowAllocation);
+                 for (Statement succ : flowSolver.getSuccsOf(getStmt())) {
+-                    ExecuteImportFieldStmtPOI<W> exec = new ExecuteImportFieldStmtPOI<W>(WeightedBoomerang.this,
+-                            baseSolver, flowSolver, FieldReadPOI.this, succ) {
++                    ExecuteImportFieldStmtPOI<W> exec = new ExecuteImportFieldStmtPOI<W>(WeightedBoomerang.this, baseSolver, flowSolver, FieldReadPOI.this, succ) {
+                         public void activate(INode<Node<Statement, Val>> start) {
+                             activateAllPois(new SolverPair(flowSolver, baseSolver), start);
+-                        };
++                        }
++
++                        ;
+                     };
+                     registerActivationListener(new SolverPair(flowSolver, baseSolver), exec);
+                     exec.solve();
+@@ -1284,8 +1261,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+         }
+     }
+ 
+-    public void registerActivationListener(WeightedBoomerang<W>.SolverPair solverPair,
+-            ExecuteImportFieldStmtPOI<W> exec) {
++    public void registerActivationListener(WeightedBoomerang<W>.SolverPair solverPair, ExecuteImportFieldStmtPOI<W> exec) {
+         Collection<INode<Node<Statement, Val>>> listeners = activatedPoi.get(solverPair);
+         for (INode<Node<Statement, Val>> node : Lists.newArrayList(listeners)) {
+             exec.trigger(node);
+@@ -1327,12 +1303,14 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             if (baseSolver == null) {
+                 if (other.baseSolver != null)
+                     return false;
+-            } else if (!baseSolver.equals(other.baseSolver))
++            }
++            else if (!baseSolver.equals(other.baseSolver))
+                 return false;
+             if (flowSolver == null) {
+                 if (other.flowSolver != null)
+                     return false;
+-            } else if (!flowSolver.equals(other.flowSolver))
++            }
++            else if (!flowSolver.equals(other.flowSolver))
+                 return false;
+             return true;
+         }
+@@ -1343,8 +1321,11 @@ public abstract class WeightedBoomerang<W extends Weight> {
+ 
+     }
+ 
+-    public void createPOI(BiDiInterproceduralCFG<Unit, SootMethod> icfg, AbstractBoomerangSolver<W> baseSolver,
+-            AbstractBoomerangSolver<W> flowSolver, WeightedBoomerang<W>.FieldReadPOI fieldReadPOI, Statement succ) {
++    public void createPOI(BiDiInterproceduralCFG<Unit, SootMethod> icfg,
++                          AbstractBoomerangSolver<W> baseSolver,
++                          AbstractBoomerangSolver<W> flowSolver,
++                          WeightedBoomerang<W>.FieldReadPOI fieldReadPOI,
++                          Statement succ) {
+         // TODO Auto-generated method stub
+ 
+     }
+@@ -1391,10 +1372,10 @@ public abstract class WeightedBoomerang<W extends Weight> {
+     }
+ 
+     public void registerSolverCreationListener(SolverCreationListener<W> l) {
+-        if(solverCreationListeners.add(l)) {
+-          for(Entry<Query, AbstractBoomerangSolver<W>> e : Lists.newArrayList(queryToSolvers.entrySet())) {
+-            l.onCreatedSolver(e.getKey(), e.getValue());
+-          }
++        if (solverCreationListeners.add(l)) {
++            for (Entry<Query, AbstractBoomerangSolver<W>> e : Lists.newArrayList(queryToSolvers.entrySet())) {
++                l.onCreatedSolver(e.getKey(), e.getValue());
++            }
+         }
+     }
+ 
+@@ -1406,8 +1387,7 @@ public abstract class WeightedBoomerang<W extends Weight> {
+             W w = e.getValue();
+             if (t.getLabel().equals(Statement.epsilon()))
+                 continue;
+-            if (t.getStart().fact().value() instanceof Local
+-                    && !t.getLabel().getMethod().equals(t.getStart().fact().m()))
++            if (t.getStart().fact().value() instanceof Local && !t.getLabel().getMethod().equals(t.getStart().fact().m()))
+                 continue;
+             if (t.getLabel().getUnit().isPresent())
+                 results.put(t.getLabel(), t.getStart().fact(), w);
+diff --git a/boomerangPDS/src/main/java/boomerang/WholeProgramBoomerang.java b/boomerangPDS/src/main/java/boomerang/WholeProgramBoomerang.java
+index 76e8086e..72a1ee05 100644
+--- a/boomerangPDS/src/main/java/boomerang/WholeProgramBoomerang.java
++++ b/boomerangPDS/src/main/java/boomerang/WholeProgramBoomerang.java
+@@ -14,6 +14,7 @@ package boomerang;
+ import java.util.Collection;
+ import java.util.Collections;
+ 
++import boomerang.callgraph.BoomerangICFG;
+ import boomerang.callgraph.ObservableICFG;
+ import boomerang.callgraph.ObservableStaticICFG;
+ import boomerang.jimple.AllocVal;
+@@ -62,7 +63,7 @@ public abstract class WholeProgramBoomerang<W extends Weight> extends WeightedBo
+ 
+                 @Override
+                 public ObservableICFG<Unit, SootMethod> icfg() {
+-                    return new ObservableStaticICFG(new JimpleBasedInterproceduralCFG());
++                    return new ObservableStaticICFG(new BoomerangICFG(false));
+                 }
+             };
+         }
+diff --git a/boomerangPDS/src/main/java/boomerang/callgraph/BackwardsObservableICFG.java b/boomerangPDS/src/main/java/boomerang/callgraph/BackwardsObservableICFG.java
+index 0a647928..a819c5f1 100644
+--- a/boomerangPDS/src/main/java/boomerang/callgraph/BackwardsObservableICFG.java
++++ b/boomerangPDS/src/main/java/boomerang/callgraph/BackwardsObservableICFG.java
+@@ -101,17 +101,17 @@ public class BackwardsObservableICFG implements ObservableICFG<Unit, SootMethod>
+         delegate.addCallerListener(listener);
+     }
+ 
+- 
++
+     @Override
+     public void addUnbalancedMethod(SootMethod method) {
+         delegate.addUnbalancedMethod(method);
+     }
+-    
++
+     @Override
+     public boolean isUnbalancedMethod(SootMethod method) {
+-      return delegate.isUnbalancedMethod(method);
++        return delegate.isUnbalancedMethod(method);
+     }
+-    
++
+     @Override
+     public int getNumberOfEdgesTakenFromPrecomputedGraph() {
+         return delegate.getNumberOfEdgesTakenFromPrecomputedGraph();
+diff --git a/boomerangPDS/src/main/java/boomerang/callgraph/BoomerangICFG.java b/boomerangPDS/src/main/java/boomerang/callgraph/BoomerangICFG.java
+new file mode 100644
+index 00000000..d595d15f
+--- /dev/null
++++ b/boomerangPDS/src/main/java/boomerang/callgraph/BoomerangICFG.java
+@@ -0,0 +1,10 @@
++package boomerang.callgraph;
++
++import soot.jimple.toolkits.ide.icfg.JimpleBasedInterproceduralCFG;
++
++public class BoomerangICFG extends JimpleBasedInterproceduralCFG {
++	public BoomerangICFG(boolean enableException) {
++		super(enableException);
++		this.includePhantomCallees = true;
++	}
++}
+diff --git a/boomerangPDS/src/main/java/boomerang/callgraph/ObservableDynamicICFG.java b/boomerangPDS/src/main/java/boomerang/callgraph/ObservableDynamicICFG.java
+index b03a287b..aebbae9c 100644
+--- a/boomerangPDS/src/main/java/boomerang/callgraph/ObservableDynamicICFG.java
++++ b/boomerangPDS/src/main/java/boomerang/callgraph/ObservableDynamicICFG.java
+@@ -9,8 +9,6 @@ import java.util.LinkedHashSet;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
+ import com.google.common.cache.CacheLoader;
+ import com.google.common.cache.LoadingCache;
+ import com.google.common.collect.HashMultimap;
+@@ -31,6 +29,8 @@ import boomerang.solver.ForwardBoomerangSolver;
+ import heros.DontSynchronize;
+ import heros.SynchronizedBy;
+ import heros.solver.IDESolver;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import soot.ArrayType;
+ import soot.Body;
+ import soot.Kind;
+@@ -149,7 +149,7 @@ public class ObservableDynamicICFG implements ObservableICFG<Unit, SootMethod> {
+     private static final String THREAD_START_SIGNATURE = "<java.lang.Thread: void start()>";
+     private static final String THREAD_RUN_SUB_SIGNATURE = "void run()";
+ 
+-    private static final Logger logger = LogManager.getLogger();
++    private static final Logger logger = LoggerFactory.getLogger(ObservableDynamicICFG.class);
+ 
+     private int numberOfEdgesTakenFromPrecomputedCallGraph = 0;
+ 
+diff --git a/boomerangPDS/src/main/java/boomerang/callgraph/ObservableStaticICFG.java b/boomerangPDS/src/main/java/boomerang/callgraph/ObservableStaticICFG.java
+index 3ad1861e..d46af906 100644
+--- a/boomerangPDS/src/main/java/boomerang/callgraph/ObservableStaticICFG.java
++++ b/boomerangPDS/src/main/java/boomerang/callgraph/ObservableStaticICFG.java
+@@ -27,10 +27,10 @@ public class ObservableStaticICFG implements ObservableICFG<Unit, SootMethod> {
+     /**
+      * Wrapped static ICFG. If available, this is used to handle all queries.
+      */
+-    private BiDiInterproceduralCFG<Unit, SootMethod> precomputedGraph;
++    private BoomerangICFG precomputedGraph;
+     private Set<SootMethod> unbalancedMethods = Sets.newHashSet();
+ 
+-    public ObservableStaticICFG(BiDiInterproceduralCFG<Unit, SootMethod> icfg) {
++    public ObservableStaticICFG(BoomerangICFG icfg) {
+         this.precomputedGraph = icfg;
+     }
+ 
+@@ -152,6 +152,7 @@ public class ObservableStaticICFG implements ObservableICFG<Unit, SootMethod> {
+     public void addUnbalancedMethod(SootMethod method) {
+       unbalancedMethods.add(method);
+     }
++
+     /**
+      * Returns negative number to signify all edges are precomputed. CallGraphDebugger will add the actual number in.
+      * 
+diff --git a/boomerangPDS/src/main/java/boomerang/debugger/CallGraphDebugger.java b/boomerangPDS/src/main/java/boomerang/debugger/CallGraphDebugger.java
+index c8dd3d58..7141ce64 100644
+--- a/boomerangPDS/src/main/java/boomerang/debugger/CallGraphDebugger.java
++++ b/boomerangPDS/src/main/java/boomerang/debugger/CallGraphDebugger.java
+@@ -1,13 +1,14 @@
+ package boomerang.debugger;
+ 
+ import boomerang.Query;
++import boomerang.callgraph.ObservableDynamicICFG;
+ import boomerang.callgraph.ObservableICFG;
+ import boomerang.callgraph.ObservableStaticICFG;
+ import boomerang.solver.AbstractBoomerangSolver;
+ import com.google.common.collect.HashMultimap;
+ import com.google.common.collect.Multimap;
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import soot.Kind;
+ import soot.SootMethod;
+ import soot.Unit;
+@@ -26,7 +27,7 @@ import java.util.*;
+  */
+ public class CallGraphDebugger<W extends Weight> extends Debugger<W> {
+ 
+-    private static final Logger logger = LogManager.getLogger();
++    private static final Logger logger = LoggerFactory.getLogger(CallGraphDebugger.class);
+ 
+     private File dotFile;
+     private ObservableICFG<Unit, SootMethod> icfg;
+diff --git a/boomerangPDS/src/main/java/boomerang/debugger/ConsoleDebugger.java b/boomerangPDS/src/main/java/boomerang/debugger/ConsoleDebugger.java
+index 58762345..74b16fe2 100644
+--- a/boomerangPDS/src/main/java/boomerang/debugger/ConsoleDebugger.java
++++ b/boomerangPDS/src/main/java/boomerang/debugger/ConsoleDebugger.java
+@@ -1,16 +1,15 @@
+ package boomerang.debugger;
+ 
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
+-
+ import com.google.common.base.Joiner;
+ 
+ import boomerang.Query;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import soot.SootMethod;
+ import wpds.impl.Weight;
+ 
+ public class ConsoleDebugger<W extends Weight> extends Debugger<W> {
+-    private static final Logger logger = LogManager.getLogger();
++    private static final Logger logger = LoggerFactory.getLogger(ConsoleDebugger.class);
+ 
+     public void done(java.util.Map<boomerang.Query, boomerang.solver.AbstractBoomerangSolver<W>> queryToSolvers) {
+         int totalRules = 0;
+@@ -20,7 +19,7 @@ public class ConsoleDebugger<W extends Weight> extends Debugger<W> {
+         logger.debug("Total number of rules: " + totalRules);
+         for (Query q : queryToSolvers.keySet()) {
+             logger.debug("========================");
+-            logger.debug(q);
++            logger.debug(q.toString());
+             logger.debug("========================");
+             queryToSolvers.get(q).debugOutput();
+             for (SootMethod m : queryToSolvers.get(q).getReachableMethods()) {
+diff --git a/boomerangPDS/src/main/java/boomerang/debugger/IDEVizDebugger.java b/boomerangPDS/src/main/java/boomerang/debugger/IDEVizDebugger.java
+index f8491d78..0cc3a9be 100644
+--- a/boomerangPDS/src/main/java/boomerang/debugger/IDEVizDebugger.java
++++ b/boomerangPDS/src/main/java/boomerang/debugger/IDEVizDebugger.java
+@@ -24,10 +24,10 @@ import com.google.common.base.Stopwatch;
+ import com.google.common.collect.*;
+ import com.google.common.collect.Table.Cell;
+ import org.apache.commons.lang3.StringEscapeUtils;
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
+ import org.json.simple.JSONArray;
+ import org.json.simple.JSONObject;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import soot.SootMethod;
+ import soot.Unit;
+ import soot.jimple.*;
+@@ -46,7 +46,7 @@ import java.util.Map.Entry;
+ public class IDEVizDebugger<W extends Weight> extends Debugger<W> {
+ 
+     private static boolean ONLY_CFG = false;
+-    private static final Logger logger = LogManager.getLogger();
++    private static final Logger logger = LoggerFactory.getLogger(IDEVizDebugger.class);
+     private File ideVizFile;
+     private ObservableICFG<Unit, SootMethod> icfg;
+     private Table<Query, SootMethod, Set<Rule<Statement, INode<Val>, W>>> rules = HashBasedTable.create();
+diff --git a/boomerangPDS/src/main/java/boomerang/example/BoomerangExampleTarget.java b/boomerangPDS/src/main/java/boomerang/example/BoomerangExampleTarget.java
+index 2d8c13c6..9af44fd5 100644
+--- a/boomerangPDS/src/main/java/boomerang/example/BoomerangExampleTarget.java
++++ b/boomerangPDS/src/main/java/boomerang/example/BoomerangExampleTarget.java
+@@ -3,7 +3,7 @@
+  * This program and the accompanying materials are made available under the
+  * terms of the Eclipse Public License 2.0 which is available at
+  * http://www.eclipse.org/legal/epl-2.0.
+- *  
++ *
+  * SPDX-License-Identifier: EPL-2.0
+  *
+  * Contributors:
+@@ -22,15 +22,32 @@ public class BoomerangExampleTarget {
+     }
+ 
+     private static void staticCallOnFile(ClassWithField x, NestedClassWithField n) {
+-        ObjectOfInterest queryVariable = x.field;
++        String queryVariable = "Value";
++        // ObjectOfInterest queryVariable = x.field;
+         // The analysis triggers a query for the following variable
+         queryFor(queryVariable);
+     }
+ 
++    private static String getNewString() {
++        String c = "Stub";
++        return c;
++    }
++
++    private static ObjectOfInterest getNew() {
++        ClassWithField a = new ClassWithField();
++        ObjectOfInterest x = new ObjectOfInterest();
++        a.field = x;
++        return x;
++    }
++
+     private static void queryFor(ObjectOfInterest queryVariable) {
+ 
+     }
+ 
++    private static void queryFor(String queryVariable) {
++
++    }
++
+     public static class ClassWithField {
+         public ObjectOfInterest field;
+     }
+diff --git a/boomerangPDS/src/main/java/boomerang/example/ExampleMain.java b/boomerangPDS/src/main/java/boomerang/example/ExampleMain.java
+index 899dd069..e896699e 100644
+--- a/boomerangPDS/src/main/java/boomerang/example/ExampleMain.java
++++ b/boomerangPDS/src/main/java/boomerang/example/ExampleMain.java
+@@ -16,12 +16,13 @@ import boomerang.Boomerang;
+ import boomerang.DefaultBoomerangOptions;
+ import boomerang.callgraph.ObservableDynamicICFG;
+ import boomerang.callgraph.ObservableICFG;
++import boomerang.debugger.ConsoleDebugger;
++import boomerang.debugger.Debugger;
+ import boomerang.jimple.Statement;
+ import boomerang.jimple.Val;
+ import boomerang.preanalysis.BoomerangPretransformer;
+ import boomerang.results.BackwardBoomerangResults;
+ import boomerang.seedfactory.SeedFactory;
+-import boomerang.seedfactory.SimpleSeedFactory;
+ import soot.*;
+ import soot.jimple.Stmt;
+ import soot.jimple.toolkits.callgraph.ReachableMethods;
+@@ -112,6 +113,10 @@ public class ExampleMain {
+                         // Must be turned off if no SeedFactory is specified.
+                         return false;
+                     }
++                    public boolean trackStrings() {
++                        return true;
++                    }
++
+                 }) {
+                     ObservableICFG<Unit, SootMethod> icfg = new ObservableDynamicICFG(this);
+ 
+@@ -124,6 +129,11 @@ public class ExampleMain {
+                     public SeedFactory<NoWeight> getSeedFactory() {
+                         return null;
+                     }
++
++                    @Override
++                    public Debugger<NoWeight> createDebugger() {
++                        return new ConsoleDebugger();
++                    }
+                 };
+ 
+                 // 2. Submit a query to the solver.
+diff --git a/boomerangPDS/src/main/java/boomerang/jimple/Val.java b/boomerangPDS/src/main/java/boomerang/jimple/Val.java
+index b273c5e6..66edff6a 100644
+--- a/boomerangPDS/src/main/java/boomerang/jimple/Val.java
++++ b/boomerangPDS/src/main/java/boomerang/jimple/Val.java
+@@ -3,7 +3,7 @@
+  * This program and the accompanying materials are made available under the
+  * terms of the Eclipse Public License 2.0 which is available at
+  * http://www.eclipse.org/legal/epl-2.0.
+- *  
++ *
+  * SPDX-License-Identifier: EPL-2.0
+  *
+  * Contributors:
+@@ -16,6 +16,7 @@ import soot.NullType;
+ import soot.SootMethod;
+ import soot.Type;
+ import soot.Value;
++import soot.jimple.StaticFieldRef;
+ 
+ public class Val {
+     protected final SootMethod m;
+@@ -118,7 +119,8 @@ public class Val {
+     }
+ 
+     public boolean isStatic() {
+-        return false;
++        return v != null && v instanceof StaticFieldRef;
++        // return false;
+     }
+ 
+     public boolean isNewExpr() {
+diff --git a/boomerangPDS/src/main/java/boomerang/preanalysis/BoomerangPretransformer.java b/boomerangPDS/src/main/java/boomerang/preanalysis/BoomerangPretransformer.java
+index 9264a204..b7ce85df 100644
+--- a/boomerangPDS/src/main/java/boomerang/preanalysis/BoomerangPretransformer.java
++++ b/boomerangPDS/src/main/java/boomerang/preanalysis/BoomerangPretransformer.java
+@@ -62,8 +62,8 @@ public class BoomerangPretransformer extends BodyTransformer {
+         for (Unit u : cwnc) {
+             if (u instanceof AssignStmt) {
+                 AssignStmt assignStmt = (AssignStmt) u;
+-                if (isFieldRef(assignStmt.getLeftOp()) && assignStmt.getRightOp() instanceof Constant
+-                        && !(assignStmt.getRightOp() instanceof ClassConstant)) {
++                if (isFieldRef(assignStmt.getLeftOp()) && assignStmt.getRightOp() instanceof Constant){
++                        // && !(assignStmt.getRightOp() instanceof ClassConstant)) {
+                     String label = "varReplacer" + new Integer(replaceCounter++).toString();
+                     Local paramVal = new JimpleLocal(label, assignStmt.getRightOp().getType());
+                     AssignStmt newUnit = new JAssignStmt(paramVal, assignStmt.getRightOp());
+@@ -83,7 +83,7 @@ public class BoomerangPretransformer extends BodyTransformer {
+                 }
+                 List<ValueBox> useBoxes = stmt.getInvokeExpr().getUseBoxes();
+                 for (Value v : stmt.getInvokeExpr().getArgs()) {
+-                    if (v instanceof Constant && !(v instanceof ClassConstant)) {
++                    if (v instanceof Constant ){ //&& !(v instanceof ClassConstant)) {
+                         String label = "varReplacer" + new Integer(replaceCounter++).toString();
+                         Local paramVal = new JimpleLocal(label, v.getType());
+                         AssignStmt newUnit = new JAssignStmt(paramVal, v);
+diff --git a/boomerangPDS/src/main/java/boomerang/results/ForwardBoomerangResults.java b/boomerangPDS/src/main/java/boomerang/results/ForwardBoomerangResults.java
+index 1a4c0ac5..5faf45b4 100644
+--- a/boomerangPDS/src/main/java/boomerang/results/ForwardBoomerangResults.java
++++ b/boomerangPDS/src/main/java/boomerang/results/ForwardBoomerangResults.java
+@@ -1,3 +1,5 @@
++
++
+ package boomerang.results;
+ 
+ import boomerang.ForwardQuery;
+@@ -18,12 +20,7 @@ import heros.utilities.DefaultValueMap;
+ import soot.Local;
+ import soot.SootMethod;
+ import soot.Unit;
+-import soot.jimple.AssignStmt;
+-import soot.jimple.IdentityStmt;
+-import soot.jimple.InstanceFieldRef;
+-import soot.jimple.InstanceInvokeExpr;
+-import soot.jimple.LengthExpr;
+-import soot.jimple.Stmt;
++import soot.jimple.*;
+ import sync.pds.solver.nodes.GeneratedState;
+ import sync.pds.solver.nodes.INode;
+ import sync.pds.solver.nodes.Node;
+@@ -73,13 +70,10 @@ public class ForwardBoomerangResults<W extends Weight> extends AbstractBoomerang
+         AbstractBoomerangSolver<W> solver = queryToSolvers.get(query);
+         if (solver == null)
+             return HashBasedTable.create();
+-        Table<Statement, Val, W> res = asStatementValWeightTable();
+-        Set<SootMethod> visitedMethods = Sets.newHashSet();
+-        for (Statement s : res.rowKeySet()) {
+-            visitedMethods.add(s.getMethod());
+-        }
++        Set<SootMethod> visitedMethods = solver.getVisitedMethods();
+         ForwardBoomerangSolver<W> forwardSolver = (ForwardBoomerangSolver) queryToSolvers.get(query);
+         Table<Statement, Val, W> destructingStatement = HashBasedTable.create();
++        Table<Statement, Val, W> res = asStatementValWeightTable();
+         for (SootMethod flowReaches : visitedMethods) {
+             for (Unit ep : icfg.getEndPointsOf(flowReaches)) {
+                 Statement exitStmt = new Statement((Stmt) ep, flowReaches);
+@@ -94,17 +88,17 @@ public class ForwardBoomerangResults<W extends Weight> extends AbstractBoomerang
+                     public void onCallerAdded(Unit callSite, SootMethod m) {
+                         SootMethod callee = icfg.getMethodOf(callSite);
+                         if (visitedMethods.contains(callee)) {
+-                            for (Entry<Val, W> valAndW : res.row(exitStmt).entrySet()) {
++                            for (Val v : solver.getValsAtStatement(exitStmt)) {
+                                 for (Unit retSite : icfg.getSuccsOf(callSite)) {
+                                     escapes.addAll(forwardSolver.computeReturnFlow(flowReaches, (Stmt) ep,
+-                                            valAndW.getKey(), (Stmt) callSite, (Stmt) retSite));
++                                            v, (Stmt) callSite, (Stmt) retSite));
+                                 }
+                             }
+                         }
+                     }
+                 });
+-                if (escapes.isEmpty()) {
+-                    Map<Val, W> row = res.row(exitStmt);
++                if (escapes.isEmpty()) {                   
++                	Map<Val, W> row = res.row(exitStmt);
+                     findLastUsage(exitStmt, row, destructingStatement, forwardSolver);
+                 }
+             }
+@@ -148,7 +142,7 @@ public class ForwardBoomerangResults<W extends Weight> extends AbstractBoomerang
+      * statement s is relevant, if a propagated variable x is used at s. I.e., when propagting x @ y = x, the returned
+      * set contains x @ y = x, whereas it will not contain a call site x @ y = foo(c), because x is not used at the
+      * statement.
+-     * 
++     *
+      * @return The set of relevant statements during data-flow propagation
+      */
+     public Set<Node<Statement, Val>> getDataFlowPath() {
+@@ -176,7 +170,9 @@ public class ForwardBoomerangResults<W extends Weight> extends AbstractBoomerang
+         Map<Statement, SootMethod> invokedMethodsOnInstance = Maps.newHashMap();
+         if (query.stmt().isCallsite()) {
+             Stmt queryUnit = query.stmt().getUnit().get();
+-            if (queryUnit.containsInvokeExpr()) {
++            if (queryUnit.containsInvokeExpr()
++                    && queryUnit.getInvokeExpr() instanceof InstanceInvokeExpr
++                    && ((InstanceInvokeExpr) queryUnit.getInvokeExpr()).getBase().equals(query.asNode().fact().value()) ) {
+                 invokedMethodsOnInstance.put(query.stmt(), queryUnit.getInvokeExpr().getMethod());
+             }
+         }
+@@ -206,6 +202,41 @@ public class ForwardBoomerangResults<W extends Weight> extends AbstractBoomerang
+         return invokedMethodsOnInstance;
+     }
+ 
++    public Map<Statement, SootMethod> getMethodsTakingArg() {
++        Map<Statement, SootMethod> methodsTakingArg = Maps.newHashMap();
++        if (query.stmt().isCallsite()) {
++            Stmt queryUnit = query.stmt().getUnit().get();
++            if (queryUnit.containsInvokeExpr() && queryUnit.getInvokeExpr().getArgs().contains(query.asNode().fact().value())) {
++                methodsTakingArg.put(query.stmt(), queryUnit.getInvokeExpr().getMethod());
++            }
++        }
++        queryToSolvers.get(query).getFieldAutomaton()
++                .registerListener(new WPAUpdateListener<Field, INode<Node<Statement, Val>>, W>() {
++
++                    @Override
++                    public void onWeightAdded(Transition<Field, INode<Node<Statement, Val>>> t, W w,
++                                              WeightedPAutomaton<Field, INode<Node<Statement, Val>>, W> aut) {
++                        if (!t.getLabel().equals(Field.empty()) || t.getStart() instanceof GeneratedState) {
++                            return;
++                        }
++                        Node<Statement, Val> node = t.getStart().fact();
++                        Val fact = node.fact();
++                        Statement curr = node.stmt();
++                        if (curr.isCallsite()) {
++                            Stmt callSite = (Stmt) curr.getUnit().get();
++                            if (callSite.getInvokeExpr() instanceof InstanceInvokeExpr) {
++                                InvokeExpr e = callSite.getInvokeExpr();
++                                if (e.getArgs().contains(fact.value())) {
++                                    methodsTakingArg.put(curr, e.getMethod());
++                                }
++                            }
++                        }
++                    }
++                });
++        return methodsTakingArg;
++    }
++
++
+     public Set<NullPointer> getPotentialNullPointerDereferences() {
+         Set<Node<Statement, Val>> res = Sets.newHashSet();
+         queryToSolvers.get(query).getFieldAutomaton()
+diff --git a/boomerangPDS/src/main/java/boomerang/solver/AbstractBoomerangSolver.java b/boomerangPDS/src/main/java/boomerang/solver/AbstractBoomerangSolver.java
+index 9914f821..1d754ad9 100644
+--- a/boomerangPDS/src/main/java/boomerang/solver/AbstractBoomerangSolver.java
++++ b/boomerangPDS/src/main/java/boomerang/solver/AbstractBoomerangSolver.java
+@@ -18,9 +18,6 @@ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Set;
+ 
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
+-
+ import com.google.common.collect.HashBasedTable;
+ import com.google.common.collect.HashMultimap;
+ import com.google.common.collect.Lists;
+@@ -39,6 +36,8 @@ import boomerang.jimple.Field;
+ import boomerang.jimple.Statement;
+ import boomerang.jimple.Val;
+ import boomerang.util.RegExAccessPath;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import pathexpression.IRegEx;
+ import soot.NullType;
+ import soot.RefType;
+@@ -160,7 +159,7 @@ public abstract class AbstractBoomerangSolver<W extends Weight> extends SyncPDSS
+         }
+     }
+ 
+-    protected static final Logger logger = LogManager.getLogger();
++    protected static final Logger logger = LoggerFactory.getLogger(AbstractBoomerangSolver.class);
+     protected final ObservableICFG<Unit, SootMethod> icfg;
+     protected final Query query;
+     protected boolean INTERPROCEDURAL = true;
+@@ -749,4 +748,21 @@ public abstract class AbstractBoomerangSolver<W extends Weight> extends SyncPDSS
+         this.perStatementFieldTransitionsListener.clear();
+     }
+ 
++	public Set<SootMethod> getVisitedMethods() {
++		Set<SootMethod> methods = Sets.newHashSet();
++		for(Node<Statement, Val> s : getReachedStates()) {
++			methods.add(s.stmt().getMethod());
++		}
++		return methods;
++	}
++
++	public Set<Val> getValsAtStatement(Statement exitStmt) {
++		Set<Val> vals = Sets.newHashSet();
++		for(Node<Statement, Val> s : getReachedStates()) {
++			if(s.stmt().equals(exitStmt))
++				vals.add(s.fact());
++		}
++		return vals;
++	}
++
+ }
+diff --git a/boomerangPDS/src/main/java/boomerang/solver/BackwardBoomerangSolver.java b/boomerangPDS/src/main/java/boomerang/solver/BackwardBoomerangSolver.java
+index 343bdf9c..3738870c 100644
+--- a/boomerangPDS/src/main/java/boomerang/solver/BackwardBoomerangSolver.java
++++ b/boomerangPDS/src/main/java/boomerang/solver/BackwardBoomerangSolver.java
+@@ -3,7 +3,7 @@
+  * This program and the accompanying materials are made available under the
+  * terms of the Eclipse Public License 2.0 which is available at
+  * http://www.eclipse.org/legal/epl-2.0.
+- *  
++ *
+  * SPDX-License-Identifier: EPL-2.0
+  *
+  * Contributors:
+@@ -11,6 +11,7 @@
+  *******************************************************************************/
+ package boomerang.solver;
+ 
++import java.lang.reflect.Modifier;
+ import java.util.AbstractMap;
+ import java.util.Collection;
+ import java.util.Collections;
+@@ -36,17 +37,8 @@ import soot.Scene;
+ import soot.SootMethod;
+ import soot.Unit;
+ import soot.Value;
+-import soot.jimple.ArrayRef;
+-import soot.jimple.AssignStmt;
+-import soot.jimple.CastExpr;
+-import soot.jimple.InstanceFieldRef;
+-import soot.jimple.InstanceInvokeExpr;
+-import soot.jimple.InvokeExpr;
+-import soot.jimple.ReturnStmt;
+-import soot.jimple.StaticFieldRef;
+-import soot.jimple.Stmt;
+-import soot.jimple.ThrowStmt;
+-import soot.jimple.toolkits.ide.icfg.BiDiInterproceduralCFG;
++import soot.jimple.*;
++import soot.toolkits.scalar.Pair;
+ import sync.pds.solver.nodes.CallPopNode;
+ import sync.pds.solver.nodes.ExclusionNode;
+ import sync.pds.solver.nodes.GeneratedState;
+@@ -82,14 +74,18 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+             if (callee.isStaticInitializer()) {
+                 return;
+             }
++            if (!callee.hasActiveBody()) {
++                normalFlow(icfg.getMethodOf(callSite), curr);
++                return;
++            }
+             // onlyStaticInitializer = false;
+ 
+             Set<State> out = Sets.newHashSet();
+             InvokeExpr invokeExpr = curr.stmt().getUnit().get().getInvokeExpr();
+             for (Unit calleeSp : icfg.getStartPointsOf(callee)) {
+                 for (Unit returnSite : icfg.getSuccsOf(callSite)) {
+-                    Collection<? extends State> res = computeCallFlow(caller, new Statement((Stmt) returnSite, caller),
+-                            new Statement((Stmt) callSite, caller), invokeExpr, curr.fact(), callee, (Stmt) calleeSp);
++                    Collection<? extends State> res =
++                            computeCallFlow(caller, new Statement((Stmt) returnSite, caller), new Statement((Stmt) callSite, caller), invokeExpr, curr.fact(), callee, (Stmt) calleeSp);
+                     out.addAll(res);
+                 }
+             }
+@@ -127,17 +123,20 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+             if (callSite == null) {
+                 if (other.callSite != null)
+                     return false;
+-            } else if (!callSite.equals(other.callSite))
++            }
++            else if (!callSite.equals(other.callSite))
+                 return false;
+             if (caller == null) {
+                 if (other.caller != null)
+                     return false;
+-            } else if (!caller.equals(other.caller))
++            }
++            else if (!caller.equals(other.caller))
+                 return false;
+             if (curr == null) {
+                 if (other.curr != null)
+                     return false;
+-            } else if (!curr.equals(other.curr))
++            }
++            else if (!curr.equals(other.curr))
+                 return false;
+             return true;
+         }
+@@ -148,10 +147,12 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+ 
+     }
+ 
+-    public BackwardBoomerangSolver(ObservableICFG<Unit, SootMethod> icfg, BackwardQuery query,
+-            Map<Entry<INode<Node<Statement, Val>>, Field>, INode<Node<Statement, Val>>> genField,
+-            BoomerangOptions options, NestedWeightedPAutomatons<Statement, INode<Val>, W> callSummaries,
+-            NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W> fieldSummaries) {
++    public BackwardBoomerangSolver(ObservableICFG<Unit, SootMethod> icfg,
++                                   BackwardQuery query,
++                                   Map<Entry<INode<Node<Statement, Val>>, Field>, INode<Node<Statement, Val>>> genField,
++                                   BoomerangOptions options,
++                                   NestedWeightedPAutomatons<Statement, INode<Val>, W> callSummaries,
++                                   NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W> fieldSummaries) {
+         super(icfg, query, genField, options, callSummaries, fieldSummaries);
+     }
+ 
+@@ -167,15 +168,13 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+     public INode<Node<Statement, Val>> generateFieldState(final INode<Node<Statement, Val>> d, final Field loc) {
+         Entry<INode<Node<Statement, Val>>, Field> e = new AbstractMap.SimpleEntry<>(d, loc);
+         if (!generatedFieldState.containsKey(e)) {
+-            generatedFieldState.put(e,
+-                    new GeneratedState<Node<Statement, Val>, Field>(fieldAutomaton.getInitialState(), loc));
++            generatedFieldState.put(e, new GeneratedState<Node<Statement, Val>, Field>(fieldAutomaton.getInitialState(), loc));
+         }
+         return generatedFieldState.get(e);
+     }
+ 
+     @Override
+-    protected Collection<? extends State> computeReturnFlow(SootMethod method, Stmt curr, Val value, Stmt callSite,
+-            Stmt returnSite) {
++    protected Collection<? extends State> computeReturnFlow(SootMethod method, Stmt curr, Val value, Stmt callSite, Stmt returnSite) {
+         Statement returnSiteStatement = new Statement(returnSite, icfg.getMethodOf(returnSite));
+         Set<State> out = Sets.newHashSet();
+         if (!method.isStatic()) {
+@@ -183,8 +182,7 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+                 if (callSite.containsInvokeExpr()) {
+                     if (callSite.getInvokeExpr() instanceof InstanceInvokeExpr) {
+                         InstanceInvokeExpr iie = (InstanceInvokeExpr) callSite.getInvokeExpr();
+-                        out.add(new CallPopNode<Val, Statement>(new Val(iie.getBase(), icfg.getMethodOf(callSite)),
+-                                PDSSystem.CALLS, returnSiteStatement));
++                        out.add(new CallPopNode<Val, Statement>(new Val(iie.getBase(), icfg.getMethodOf(callSite)), PDSSystem.CALLS, returnSiteStatement));
+                     }
+                 }
+             }
+@@ -194,33 +192,33 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+             if (param.equals(value.value())) {
+                 if (callSite.containsInvokeExpr()) {
+                     InvokeExpr ie = callSite.getInvokeExpr();
+-                    out.add(new CallPopNode<Val, Statement>(new Val(ie.getArg(index), icfg.getMethodOf(callSite)),
+-                            PDSSystem.CALLS, returnSiteStatement));
++                    out.add(new CallPopNode<Val, Statement>(new Val(ie.getArg(index), icfg.getMethodOf(callSite)), PDSSystem.CALLS, returnSiteStatement));
+                 }
+             }
+             index++;
+         }
+         if (value.isStatic()) {
+-            out.add(new CallPopNode<Val, Statement>(
+-                    new StaticFieldVal(value.value(), ((StaticFieldVal) value).field(), icfg.getMethodOf(callSite)),
+-                    PDSSystem.CALLS, returnSiteStatement));
++            out.add(new CallPopNode<Val, Statement>(new StaticFieldVal(value.value(), ((StaticFieldVal) value).field(), icfg.getMethodOf(callSite)), PDSSystem.CALLS, returnSiteStatement));
+         }
+         return out;
+     }
+ 
+     protected void callFlow(SootMethod caller, Node<Statement, Val> curr) {
+         Statement callSite = curr.stmt();
+-        icfg.addCalleeListener(new CallSiteCalleeListener(curr, caller, callSite));
++        //icfg.addCalleeListener(new CallSiteCalleeListener(curr, caller, callSite));
+         InvokeExpr invokeExpr = callSite.getUnit().get().getInvokeExpr();
+-        if (Scene.v().isExcluded(invokeExpr.getMethod().getDeclaringClass()) || invokeExpr.getMethod().isNative()) {
++        if (options.isIgnoredMethod(invokeExpr.getMethod()) || invokeExpr.getMethod().getDeclaringClass().isPhantom() || Scene.v().isExcluded(invokeExpr.getMethod().getDeclaringClass()) ||
++                invokeExpr.getMethod().isNative()) {
+             normalFlow(caller, curr);
+             for (Statement returnSite : getSuccsOf(callSite)) {
+-                for (State s : getEmptyCalleeFlow(caller, callSite.getUnit().get(), curr.fact(),
+-                        returnSite.getUnit().get())) {
++                for (State s : getEmptyCalleeFlow(caller, callSite.getUnit().get(), curr.fact(), returnSite.getUnit().get())) {
+                     propagate(curr, s);
+                 }
+             }
+         }
++        else { //** else branch
++            icfg.addCalleeListener(new CallSiteCalleeListener(curr, caller, callSite));
++        }
+     }
+ 
+     @Override
+@@ -242,9 +240,11 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+             }
+             if (curr.containsInvokeExpr() && valueUsedInStatement(curr, value) && INTERPROCEDURAL) {
+                 callFlow(method, node);
+-            } else if (icfg.isExitStmt(curr)) {
++            }
++            else if (icfg.isExitStmt(curr)) {
+                 returnFlow(method, node);
+-            } else {
++            }
++            else {
+                 normalFlow(method, node);
+             }
+         }
+@@ -263,8 +263,7 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+         }
+     }
+ 
+-    protected Collection<? extends State> computeCallFlow(SootMethod caller, Statement returnSite, Statement callSite,
+-            InvokeExpr invokeExpr, Val fact, SootMethod callee, Stmt calleeSp) {
++    protected Collection<? extends State> computeCallFlow(SootMethod caller, Statement returnSite, Statement callSite, InvokeExpr invokeExpr, Val fact, SootMethod callee, Stmt calleeSp) {
+         if (!callee.hasActiveBody())
+             return Collections.emptySet();
+         if (calleeSp instanceof ThrowStmt) {
+@@ -275,8 +274,7 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+         if (invokeExpr instanceof InstanceInvokeExpr) {
+             InstanceInvokeExpr iie = (InstanceInvokeExpr) invokeExpr;
+             if (iie.getBase().equals(fact.value()) && !callee.isStatic()) {
+-                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee),
+-                        new Val(calleeBody.getThisLocal(), callee), returnSite, PDSSystem.CALLS));
++                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee), new Val(calleeBody.getThisLocal(), callee), returnSite, PDSSystem.CALLS));
+             }
+         }
+         List<Local> parameterLocals = calleeBody.getParameterLocals();
+@@ -284,8 +282,7 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+         for (Value arg : invokeExpr.getArgs()) {
+             if (arg.equals(fact.value()) && parameterLocals.size() > i) {
+                 Local param = parameterLocals.get(i);
+-                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee), new Val(param, callee),
+-                        returnSite, PDSSystem.CALLS));
++                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee), new Val(param, callee), returnSite, PDSSystem.CALLS));
+             }
+             i++;
+         }
+@@ -294,14 +291,11 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+             AssignStmt as = (AssignStmt) callSite.getUnit().get();
+             ReturnStmt retStmt = (ReturnStmt) calleeSp;
+             if (as.getLeftOp().equals(fact.value())) {
+-                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee),
+-                        new Val(retStmt.getOp(), callee), returnSite, PDSSystem.CALLS));
++                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee), new Val(retStmt.getOp(), callee), returnSite, PDSSystem.CALLS));
+             }
+         }
+         if (fact.isStatic()) {
+-            out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee),
+-                    new StaticFieldVal(fact.value(), ((StaticFieldVal) fact).field(), callee), returnSite,
+-                    PDSSystem.CALLS));
++            out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee), new StaticFieldVal(fact.value(), ((StaticFieldVal) fact).field(), callee), returnSite, PDSSystem.CALLS));
+         }
+         return out;
+     }
+@@ -323,6 +317,21 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+         // getWrittenField(curr)));
+         // }
+         boolean leftSideMatches = false;
++        //*
++        List<Pair<Value, Value>> passTroughValues = options.passTroughCall(curr, fact, this);
++        if (!passTroughValues.isEmpty()) {
++            boolean added = false;
++            for (Pair<Value, Value> passTroughValue : passTroughValues) {
++                Value base = passTroughValue.getO1();
++                Value arg = passTroughValue.getO2();
++                if (base.equals(fact.value())) {
++                    out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(arg, method)));
++                    added = true;
++                }
++            }
++            if (added)
++                return out;
++        }
+         if (curr instanceof AssignStmt) {
+             AssignStmt assignStmt = (AssignStmt) curr;
+             Value leftOp = assignStmt.getLeftOp();
+@@ -332,30 +341,32 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+                 if (rightOp instanceof InstanceFieldRef) {
+                     if (options.trackFields()) {
+                         InstanceFieldRef ifr = (InstanceFieldRef) rightOp;
+-                        out.add(new PushNode<Statement, Val, Field>(new Statement(succ, method),
+-                                new Val(ifr.getBase(), method), new Field(ifr.getField()), PDSSystem.FIELDS));
++                        out.add(new PushNode<Statement, Val, Field>(new Statement(succ, method), new Val(ifr.getBase(), method), new Field(ifr.getField()), PDSSystem.FIELDS));
+                     }
+                 } else if (rightOp instanceof StaticFieldRef) {
+                     if (options.trackFields() && options.staticFlows()) {
+                         StaticFieldRef sfr = (StaticFieldRef) rightOp;
+-                        out.add(new Node<Statement, Val>(new Statement(succ, method),
+-                                new StaticFieldVal(leftOp, sfr.getField(), method)));
++                        if (Modifier.isFinal(sfr.getField().getModifiers()))
++                            return Collections.emptySet();
++                        out.add(new Node<Statement, Val>(new Statement(succ, method), new StaticFieldVal(leftOp, sfr.getField(), method)));
+                     }
+-                } else if (rightOp instanceof ArrayRef) {
++                }
++                else if (rightOp instanceof ArrayRef) {
+                     ArrayRef ifr = (ArrayRef) rightOp;
+                     if (options.trackFields() && options.arrayFlows()) {
+-                        out.add(new PushNode<Statement, Val, Field>(new Statement(succ, method),
+-                                new Val(ifr.getBase(), method), Field.array(), PDSSystem.FIELDS));
++                        out.add(new PushNode<Statement, Val, Field>(new Statement(succ, method), new Val(ifr.getBase(), method), Field.array(), PDSSystem.FIELDS));
+                     }
+                     // leftSideMatches = false;
+-                } else if (rightOp instanceof CastExpr) {
++                }
++                else if (rightOp instanceof CastExpr) {
+                     CastExpr castExpr = (CastExpr) rightOp;
+                     out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(castExpr.getOp(), method)));
+-                } else {
++                }
++                else {
+                     if (isFieldLoadWithBase(curr, fact)) {
+-                        out.add(new ExclusionNode<Statement, Val, Field>(new Statement(succ, method), fact,
+-                                getLoadedField(curr)));
+-                    } else {
++                        out.add(new ExclusionNode<Statement, Val, Field>(new Statement(succ, method), fact, getLoadedField(curr)));
++                    }
++                    else {
+                         out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(rightOp, method)));
+                     }
+                 }
+@@ -364,21 +375,21 @@ public abstract class BackwardBoomerangSolver<W extends Weight> extends Abstract
+                 InstanceFieldRef ifr = (InstanceFieldRef) leftOp;
+                 Value base = ifr.getBase();
+                 if (base.equals(fact.value())) {
+-                    NodeWithLocation<Statement, Val, Field> succNode = new NodeWithLocation<>(
+-                            new Statement(succ, method), new Val(rightOp, method), new Field(ifr.getField()));
++                    NodeWithLocation<Statement, Val, Field> succNode = new NodeWithLocation<>(new Statement(succ, method), new Val(rightOp, method), new Field(ifr.getField()));
+                     out.add(new PopNode<NodeWithLocation<Statement, Val, Field>>(succNode, PDSSystem.FIELDS));
+                 }
+-            } else if (leftOp instanceof StaticFieldRef) {
++            }
++            else if (leftOp instanceof StaticFieldRef) {
+                 StaticFieldRef sfr = (StaticFieldRef) leftOp;
+                 if (fact.isStatic() && fact.equals(new StaticFieldVal(leftOp, sfr.getField(), method))) {
+                     out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(rightOp, method)));
+                 }
+-            } else if (leftOp instanceof ArrayRef) {
++            }
++            else if (leftOp instanceof ArrayRef) {
+                 ArrayRef ifr = (ArrayRef) leftOp;
+                 Value base = ifr.getBase();
+                 if (base.equals(fact.value())) {
+-                    NodeWithLocation<Statement, Val, Field> succNode = new NodeWithLocation<>(
+-                            new Statement(succ, method), new Val(rightOp, method), Field.array());
++                    NodeWithLocation<Statement, Val, Field> succNode = new NodeWithLocation<>(new Statement(succ, method), new Val(rightOp, method), Field.array());
+                     out.add(new PopNode<NodeWithLocation<Statement, Val, Field>>(succNode, PDSSystem.FIELDS));
+                 }
+             }
+diff --git a/boomerangPDS/src/main/java/boomerang/solver/ForwardBoomerangSolver.java b/boomerangPDS/src/main/java/boomerang/solver/ForwardBoomerangSolver.java
+index b2302b78..bd6c1d03 100644
+--- a/boomerangPDS/src/main/java/boomerang/solver/ForwardBoomerangSolver.java
++++ b/boomerangPDS/src/main/java/boomerang/solver/ForwardBoomerangSolver.java
+@@ -1,507 +1,517 @@
+-/*******************************************************************************
+- * Copyright (c) 2018 Fraunhofer IEM, Paderborn, Germany.
+- * This program and the accompanying materials are made available under the
+- * terms of the Eclipse Public License 2.0 which is available at
+- * http://www.eclipse.org/legal/epl-2.0.
+- *  
+- * SPDX-License-Identifier: EPL-2.0
+- *
+- * Contributors:
+- *     Johannes Spaeth - initial API and implementation
+- *******************************************************************************/
+-package boomerang.solver;
+-
+-import java.util.AbstractMap;
+-import java.util.Collection;
+-import java.util.Collections;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Map.Entry;
+-import java.util.Set;
+-
+-import com.google.common.base.Optional;
+-import com.google.common.collect.Sets;
+-
+-import boomerang.BoomerangOptions;
+-import boomerang.ForwardQuery;
+-import boomerang.callgraph.CalleeListener;
+-import boomerang.callgraph.ObservableICFG;
+-import boomerang.jimple.Field;
+-import boomerang.jimple.Statement;
+-import boomerang.jimple.StaticFieldVal;
+-import boomerang.jimple.Val;
+-import boomerang.jimple.ValWithFalseVariable;
+-import soot.Body;
+-import soot.Local;
+-import soot.NullType;
+-import soot.Scene;
+-import soot.SootMethod;
+-import soot.Unit;
+-import soot.Value;
+-import soot.jimple.ArrayRef;
+-import soot.jimple.AssignStmt;
+-import soot.jimple.CastExpr;
+-import soot.jimple.IfStmt;
+-import soot.jimple.InstanceFieldRef;
+-import soot.jimple.InstanceInvokeExpr;
+-import soot.jimple.InstanceOfExpr;
+-import soot.jimple.IntConstant;
+-import soot.jimple.InvokeExpr;
+-import soot.jimple.NullConstant;
+-import soot.jimple.ReturnStmt;
+-import soot.jimple.StaticFieldRef;
+-import soot.jimple.Stmt;
+-import soot.jimple.ThrowStmt;
+-import soot.jimple.internal.JEqExpr;
+-import soot.jimple.internal.JNeExpr;
+-import soot.jimple.toolkits.ide.icfg.BiDiInterproceduralCFG;
+-import sync.pds.solver.nodes.CallPopNode;
+-import sync.pds.solver.nodes.ExclusionNode;
+-import sync.pds.solver.nodes.GeneratedState;
+-import sync.pds.solver.nodes.INode;
+-import sync.pds.solver.nodes.Node;
+-import sync.pds.solver.nodes.NodeWithLocation;
+-import sync.pds.solver.nodes.PopNode;
+-import sync.pds.solver.nodes.PushNode;
+-import wpds.impl.NestedWeightedPAutomatons;
+-import wpds.impl.Weight;
+-import wpds.interfaces.State;
+-
+-public abstract class ForwardBoomerangSolver<W extends Weight> extends AbstractBoomerangSolver<W> {
+-    private final class CallSiteCalleeListener implements CalleeListener<Unit, SootMethod> {
+-        private final SootMethod caller;
+-        private final Stmt callSite;
+-        private final Node<Statement, Val> currNode;
+-        private final InvokeExpr invokeExpr;
+-
+-        private CallSiteCalleeListener(SootMethod caller, Stmt callSite, Node<Statement, Val> currNode,
+-                InvokeExpr invokeExpr) {
+-            this.caller = caller;
+-            this.callSite = callSite;
+-            this.currNode = currNode;
+-            this.invokeExpr = invokeExpr;
+-        }
+-
+-        @Override
+-        public int hashCode() {
+-            final int prime = 31;
+-            int result = 1;
+-            result = prime * result + getOuterType().hashCode();
+-            result = prime * result + ((callSite == null) ? 0 : callSite.hashCode());
+-            result = prime * result + ((caller == null) ? 0 : caller.hashCode());
+-            result = prime * result + ((currNode == null) ? 0 : currNode.hashCode());
+-            result = prime * result + ((invokeExpr == null) ? 0 : invokeExpr.hashCode());
+-            return result;
+-        }
+-
+-        @Override
+-        public boolean equals(Object obj) {
+-            if (this == obj)
+-                return true;
+-            if (obj == null)
+-                return false;
+-            if (getClass() != obj.getClass())
+-                return false;
+-            CallSiteCalleeListener other = (CallSiteCalleeListener) obj;
+-            if (!getOuterType().equals(other.getOuterType()))
+-                return false;
+-            if (callSite == null) {
+-                if (other.callSite != null)
+-                    return false;
+-            } else if (!callSite.equals(other.callSite))
+-                return false;
+-            if (caller == null) {
+-                if (other.caller != null)
+-                    return false;
+-            } else if (!caller.equals(other.caller))
+-                return false;
+-            if (currNode == null) {
+-                if (other.currNode != null)
+-                    return false;
+-            } else if (!currNode.equals(other.currNode))
+-                return false;
+-            if (invokeExpr == null) {
+-                if (other.invokeExpr != null)
+-                    return false;
+-            } else if (!invokeExpr.equals(other.invokeExpr))
+-                return false;
+-            return true;
+-        }
+-
+-        @Override
+-        public void onCalleeAdded(Unit callSite, SootMethod callee) {
+-            if (callee.isStaticInitializer()) {
+-                return;
+-            }
+-            // onlyStaticInitializer = false;
+-            for (Unit calleeSp : icfg.getStartPointsOf(callee)) {
+-                Set<State> out = Sets.newHashSet();
+-                Collection<? extends State> res = computeCallFlow(caller, new Statement((Stmt) callSite, caller),
+-                        invokeExpr, currNode.fact(), callee, (Stmt) calleeSp);
+-                out.addAll(res);
+-                for (State s : out) {
+-                    propagate(currNode, s);
+-                }
+-            }
+-            addReachable(callee);
+-
+-            // if(Scene.v().isExcluded(callee.getDeclaringClass())) {
+-            // calleeExcluded = true;
+-            // }
+-        }
+-
+-        @Override
+-        public Unit getObservedCaller() {
+-            return callSite;
+-        }
+-
+-        private ForwardBoomerangSolver getOuterType() {
+-            return ForwardBoomerangSolver.this;
+-        }
+-    }
+-
+-    public ForwardBoomerangSolver(ObservableICFG<Unit, SootMethod> icfg, ForwardQuery query,
+-            Map<Entry<INode<Node<Statement, Val>>, Field>, INode<Node<Statement, Val>>> genField,
+-            BoomerangOptions options, NestedWeightedPAutomatons<Statement, INode<Val>, W> callSummaries,
+-            NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W> fieldSummaries) {
+-        super(icfg, query, genField, options, callSummaries, fieldSummaries);
+-    }
+-
+-    public Collection<? extends State> computeCallFlow(SootMethod caller, Statement callSite, InvokeExpr invokeExpr,
+-            Val fact, SootMethod callee, Stmt calleeSp) {
+-        if (!callee.hasActiveBody() || callee.isStaticInitializer()) {
+-            return Collections.emptySet();
+-        }
+-        Body calleeBody = callee.getActiveBody();
+-        Set<State> out = Sets.newHashSet();
+-        if (invokeExpr instanceof InstanceInvokeExpr) {
+-            InstanceInvokeExpr iie = (InstanceInvokeExpr) invokeExpr;
+-            if (iie.getBase().equals(fact.value()) && !callee.isStatic()) {
+-                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee),
+-                        new Val(calleeBody.getThisLocal(), callee), callSite, PDSSystem.CALLS));
+-            }
+-        }
+-        int i = 0;
+-        List<Local> parameterLocals = calleeBody.getParameterLocals();
+-        for (Value arg : invokeExpr.getArgs()) {
+-            if (arg.equals(fact.value()) && parameterLocals.size() > i) {
+-                Local param = parameterLocals.get(i);
+-                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee), new Val(param, callee),
+-                        callSite, PDSSystem.CALLS));
+-            }
+-            i++;
+-        }
+-        if (fact.isStatic()) {
+-            out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee),
+-                    new StaticFieldVal(fact.value(), ((StaticFieldVal) fact).field(), callee), callSite,
+-                    PDSSystem.CALLS));
+-        }
+-        return out;
+-    }
+-
+-    public INode<Node<Statement, Val>> generateFieldState(final INode<Node<Statement, Val>> d, final Field loc) {
+-        Entry<INode<Node<Statement, Val>>, Field> e = new AbstractMap.SimpleEntry<>(d, loc);
+-        if (!generatedFieldState.containsKey(e)) {
+-            generatedFieldState.put(e,
+-                    new GeneratedState<Node<Statement, Val>, Field>(fieldAutomaton.getInitialState(), loc));
+-        }
+-        return generatedFieldState.get(e);
+-    }
+-
+-    @Override
+-    protected boolean killFlow(SootMethod m, Stmt curr, Val value) {
+-        if (!m.getActiveBody().getLocals().contains(value.value()) && !value.isStatic())
+-            return true;
+-        if (curr instanceof AssignStmt) {
+-            AssignStmt as = (AssignStmt) curr;
+-            // Kill x at any statement x = * during propagation.
+-            if (as.getLeftOp().equals(value.value())) {
+-                // But not for a statement x = x.f
+-                if (as.getRightOp() instanceof InstanceFieldRef) {
+-                    InstanceFieldRef iie = (InstanceFieldRef) as.getRightOp();
+-                    if (iie.getBase().equals(value.value())) {
+-                        return false;
+-                    }
+-                }
+-                return true;
+-            }
+-            if (as.getLeftOp() instanceof StaticFieldRef) {
+-                StaticFieldRef sfr = (StaticFieldRef) as.getLeftOp();
+-                if (value.isStatic() && value.equals(new StaticFieldVal(as.getLeftOp(), sfr.getField(), m))) {
+-                    return true;
+-                }
+-            }
+-        }
+-        return false;
+-    }
+-
+-    @Override
+-    public void computeSuccessor(Node<Statement, Val> node) {
+-        Statement stmt = node.stmt();
+-        Optional<Stmt> unit = stmt.getUnit();
+-        if (unit.isPresent()) {
+-            Stmt curr = unit.get();
+-            Val value = node.fact();
+-            SootMethod method = icfg.getMethodOf(curr);
+-            if (method == null)
+-                return;
+-            if (icfg.isExitStmt(curr)) {
+-                returnFlow(method, node);
+-                return;
+-            }
+-            for (Unit next : icfg.getSuccsOf(curr)) {
+-                Stmt nextStmt = (Stmt) next;
+-                if (query.getType() instanceof NullType && curr instanceof IfStmt
+-                        && killAtIfStmt((IfStmt) curr, value, next)) {
+-                    continue;
+-                }
+-                if (nextStmt.containsInvokeExpr() && (isParameter(value, nextStmt) || value.isStatic())) {
+-                    callFlow(method, node, nextStmt, nextStmt.getInvokeExpr());
+-                } else if (!killFlow(method, nextStmt, value)) {
+-                    Collection<State> out = computeNormalFlow(method, curr, value, nextStmt);
+-                    for (State s : out) {
+-                        propagate(node, s);
+-                    }
+-                }
+-            }
+-        }
+-    }
+-
+-    /**
+-     * This method kills a data-flow at an if-stmt, it is assumed that the propagated "allocation" site is x = null and
+-     * fact is the propagated aliased variable. (i.e., y after a statement y = x). If the if-stmt checks for if y !=
+-     * null or if y == null, data-flow propagation can be killed when along the true/false branch.
+-     * 
+-     * @param ifStmt
+-     *            The if-stmt the data-flow value fact bypasses
+-     * @param fact
+-     *            The data-flow value that bypasses the if-stmt
+-     * @param succ
+-     *            The successor statement of the if-stmt
+-     * @return true if the Val fact shall be killed
+-     */
+-    private boolean killAtIfStmt(IfStmt ifStmt, Val fact, Unit succ) {
+-        Stmt target = ifStmt.getTarget();
+-        Value condition = ifStmt.getCondition();
+-        if (condition instanceof JEqExpr) {
+-            JEqExpr eqExpr = (JEqExpr) condition;
+-            Value op1 = eqExpr.getOp1();
+-            Value op2 = eqExpr.getOp2();
+-            if (fact instanceof ValWithFalseVariable) {
+-                ValWithFalseVariable valWithFalseVar = (ValWithFalseVariable) fact;
+-                if (op1.equals(valWithFalseVar.getFalseVariable())) {
+-                    if (op2.equals(IntConstant.v(0))) {
+-                        if (!succ.equals(target)) {
+-                            return true;
+-                        }
+-                    }
+-                }
+-                if (op2.equals(valWithFalseVar.getFalseVariable())) {
+-                    if (op1.equals(IntConstant.v(0))) {
+-                        if (!succ.equals(target)) {
+-                            return true;
+-                        }
+-                    }
+-                }
+-            }
+-            if (op1 instanceof NullConstant) {
+-                if (op2.equals(fact.value())) {
+-                    if (!succ.equals(target)) {
+-                        return true;
+-                    }
+-                }
+-            } else if (op2 instanceof NullConstant) {
+-                if (op1.equals(fact.value())) {
+-                    if (!succ.equals(target)) {
+-                        return true;
+-                    }
+-                }
+-            }
+-        }
+-        if (condition instanceof JNeExpr) {
+-            JNeExpr eqExpr = (JNeExpr) condition;
+-            Value op1 = eqExpr.getOp1();
+-            Value op2 = eqExpr.getOp2();
+-            if (op1 instanceof NullConstant) {
+-                if (op2.equals(fact.value())) {
+-                    if (succ.equals(target)) {
+-                        return true;
+-                    }
+-                }
+-            } else if (op2 instanceof NullConstant) {
+-                if (op1.equals(fact.value())) {
+-                    if (succ.equals(target)) {
+-                        return true;
+-                    }
+-                }
+-            }
+-        }
+-        return false;
+-    }
+-
+-    protected Collection<State> normalFlow(SootMethod method, Stmt curr, Val value) {
+-        Set<State> out = Sets.newHashSet();
+-        for (Unit succ : icfg.getSuccsOf(curr)) {
+-            Collection<State> flow = computeNormalFlow(method, curr, value, (Stmt) succ);
+-            out.addAll(flow);
+-        }
+-        return out;
+-    }
+-
+-    @Override
+-    public Collection<State> computeNormalFlow(SootMethod method, Stmt curr, Val fact, Stmt succ) {
+-        Set<State> out = Sets.newHashSet();
+-        if (!isFieldWriteWithBase(succ, fact)) {
+-            // always maintain data-flow if not a field write // killFlow has
+-            // been taken care of
+-            if (!options.trackReturnOfInstanceOf() || !isInstanceOfStatement(succ, fact)) {
+-                out.add(new Node<Statement, Val>(new Statement((Stmt) succ, method), fact));
+-            }
+-        } else {
+-            out.add(new ExclusionNode<Statement, Val, Field>(new Statement(succ, method), fact, getWrittenField(succ)));
+-        }
+-        if (succ instanceof AssignStmt) {
+-            AssignStmt assignStmt = (AssignStmt) succ;
+-            Value leftOp = assignStmt.getLeftOp();
+-            Value rightOp = assignStmt.getRightOp();
+-            if (rightOp.equals(fact.value())) {
+-                if (leftOp instanceof InstanceFieldRef) {
+-                    InstanceFieldRef ifr = (InstanceFieldRef) leftOp;
+-                    if (options.trackFields()) {
+-                        out.add(new PushNode<Statement, Val, Field>(new Statement(succ, method),
+-                                new Val(ifr.getBase(), method), new Field(ifr.getField()), PDSSystem.FIELDS));
+-                    }
+-                } else if (leftOp instanceof StaticFieldRef) {
+-                    StaticFieldRef sfr = (StaticFieldRef) leftOp;
+-                    if (options.trackFields() && options.staticFlows()) {
+-                        out.add(new Node<Statement, Val>(new Statement(succ, method),
+-                                new StaticFieldVal(leftOp, sfr.getField(), method)));
+-                    }
+-                } else if (leftOp instanceof ArrayRef) {
+-                    ArrayRef arrayRef = (ArrayRef) leftOp;
+-                    if (options.trackFields() && options.arrayFlows()) {
+-                        out.add(new PushNode<Statement, Val, Field>(new Statement(succ, method),
+-                                new Val(arrayRef.getBase(), method), Field.array(), PDSSystem.FIELDS));
+-                    }
+-                } else {
+-                    out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(leftOp, method)));
+-                }
+-            }
+-            if (rightOp instanceof InstanceFieldRef) {
+-                InstanceFieldRef ifr = (InstanceFieldRef) rightOp;
+-                Value base = ifr.getBase();
+-                if (base.equals(fact.value())) {
+-                    NodeWithLocation<Statement, Val, Field> succNode = new NodeWithLocation<>(
+-                            new Statement(succ, method), new Val(leftOp, method), new Field(ifr.getField()));
+-                    out.add(new PopNode<NodeWithLocation<Statement, Val, Field>>(succNode, PDSSystem.FIELDS));
+-                }
+-            } else if (rightOp instanceof StaticFieldRef) {
+-                StaticFieldRef sfr = (StaticFieldRef) rightOp;
+-                if (fact.isStatic() && fact.equals(new StaticFieldVal(rightOp, sfr.getField(), method))) {
+-                    out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(leftOp, method)));
+-                }
+-            } else if (rightOp instanceof ArrayRef) {
+-                ArrayRef arrayRef = (ArrayRef) rightOp;
+-                Value base = arrayRef.getBase();
+-                if (base.equals(fact.value())) {
+-                    NodeWithLocation<Statement, Val, Field> succNode = new NodeWithLocation<>(
+-                            new Statement(succ, method), new Val(leftOp, method), Field.array());
+-                    out.add(new PopNode<NodeWithLocation<Statement, Val, Field>>(succNode, PDSSystem.FIELDS));
+-                }
+-            } else if (rightOp instanceof CastExpr) {
+-                CastExpr castExpr = (CastExpr) rightOp;
+-                if (castExpr.getOp().equals(fact.value())) {
+-                    out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(leftOp, method)));
+-                }
+-            } else if (rightOp instanceof InstanceOfExpr && query.getType() instanceof NullType
+-                    && options.trackReturnOfInstanceOf()) {
+-                InstanceOfExpr instanceOfExpr = (InstanceOfExpr) rightOp;
+-                if (instanceOfExpr.getOp().equals(fact.value())) {
+-                    out.add(new Node<Statement, Val>(new Statement(succ, method),
+-                            new ValWithFalseVariable(fact.value(), method, leftOp)));
+-                }
+-            }
+-        }
+-
+-        return out;
+-    }
+-
+-    private boolean isInstanceOfStatement(Stmt curr, Val fact) {
+-        if (curr instanceof AssignStmt) {
+-            AssignStmt as = (AssignStmt) curr;
+-            if (as.getRightOp() instanceof InstanceOfExpr && query.getType() instanceof NullType) {
+-                InstanceOfExpr instanceOfExpr = (InstanceOfExpr) as.getRightOp();
+-                if (instanceOfExpr.getOp().equals(fact.value())) {
+-                    return true;
+-                }
+-            }
+-        }
+-        return false;
+-    }
+-
+-    protected void callFlow(SootMethod caller, Node<Statement, Val> currNode, Stmt callSite, InvokeExpr invokeExpr) {
+-        assert icfg.isCallStmt(callSite);
+-        if (Scene.v().isExcluded(invokeExpr.getMethod().getDeclaringClass()) || invokeExpr.getMethod().isNative()) {
+-            for (State s : computeNormalFlow(caller, currNode.stmt().getUnit().get(), currNode.fact(),
+-                    (Stmt) callSite)) {
+-                propagate(currNode, s);
+-            }
+-            for (Statement returnSite : getSuccsOf(currNode.stmt())) {
+-                for (State s : getEmptyCalleeFlow(caller, callSite, currNode.fact(), returnSite.getUnit().get())) {
+-                    propagate(currNode, s);
+-                }
+-            }
+-        }
+-
+-        icfg.addCalleeListener(new CallSiteCalleeListener(caller, callSite, currNode, invokeExpr));
+-    }
+-
+-    @Override
+-    public Collection<? extends State> computeReturnFlow(SootMethod method, Stmt curr, Val value, Stmt callSite,
+-            Stmt returnSite) {
+-        Statement returnSiteStatement = new Statement(callSite, icfg.getMethodOf(callSite));
+-        if (curr instanceof ThrowStmt && !options.throwFlows()) {
+-            return Collections.emptySet();
+-        }
+-        Set<State> out = Sets.newHashSet();
+-        if (curr instanceof ReturnStmt) {
+-            Value op = ((ReturnStmt) curr).getOp();
+-            if (op.equals(value.value())) {
+-                if (callSite instanceof AssignStmt) {
+-                    out.add(new CallPopNode<Val, Statement>(
+-                            new Val(((AssignStmt) callSite).getLeftOp(), icfg.getMethodOf(callSite)), PDSSystem.CALLS,
+-                            returnSiteStatement));
+-                }
+-            }
+-        }
+-        if (!method.isStatic()) {
+-            if (method.getActiveBody().getThisLocal().equals(value.value())) {
+-                if (callSite.containsInvokeExpr()) {
+-                    if (callSite.getInvokeExpr() instanceof InstanceInvokeExpr) {
+-                        InstanceInvokeExpr iie = (InstanceInvokeExpr) callSite.getInvokeExpr();
+-                        out.add(new CallPopNode<Val, Statement>(new Val(iie.getBase(), icfg.getMethodOf(callSite)),
+-                                PDSSystem.CALLS, returnSiteStatement));
+-                    }
+-                }
+-            }
+-        }
+-        int index = 0;
+-        for (Local param : method.getActiveBody().getParameterLocals()) {
+-            if (param.equals(value.value())) {
+-                if (callSite.containsInvokeExpr()) {
+-                    InvokeExpr iie = (InvokeExpr) callSite.getInvokeExpr();
+-                    out.add(new CallPopNode<Val, Statement>(new Val(iie.getArg(index), icfg.getMethodOf(callSite)),
+-                            PDSSystem.CALLS, returnSiteStatement));
+-                }
+-            }
+-            index++;
+-        }
+-        if (value.isStatic()) {
+-            out.add(new CallPopNode<Val, Statement>(
+-                    new StaticFieldVal(value.value(), ((StaticFieldVal) value).field(), icfg.getMethodOf(callSite)),
+-                    PDSSystem.CALLS, returnSiteStatement));
+-        }
+-        return out;
+-    }
+-
++/*******************************************************************************
++ * Copyright (c) 2018 Fraunhofer IEM, Paderborn, Germany.
++ * This program and the accompanying materials are made available under the
++ * terms of the Eclipse Public License 2.0 which is available at
++ * http://www.eclipse.org/legal/epl-2.0.
++ *
++ * SPDX-License-Identifier: EPL-2.0
++ *
++ * Contributors:
++ *     Johannes Spaeth - initial API and implementation
++ *******************************************************************************/
++package boomerang.solver;
++
++import java.util.AbstractMap;
++import java.util.Collection;
++import java.util.Collections;
++import java.util.List;
++import java.util.Map;
++import java.util.Map.Entry;
++import java.util.Set;
++
++import com.google.common.base.Optional;
++import com.google.common.collect.Sets;
++
++import boomerang.BoomerangOptions;
++import boomerang.ForwardQuery;
++import boomerang.callgraph.CalleeListener;
++import boomerang.callgraph.ObservableICFG;
++import boomerang.jimple.Field;
++import boomerang.jimple.Statement;
++import boomerang.jimple.StaticFieldVal;
++import boomerang.jimple.Val;
++import boomerang.jimple.ValWithFalseVariable;
++import soot.Body;
++import soot.Local;
++import soot.NullType;
++import soot.Scene;
++import soot.SootMethod;
++import soot.Unit;
++import soot.Value;
++import soot.jimple.*;
++import soot.jimple.internal.JEqExpr;
++import soot.jimple.internal.JNeExpr;
++import soot.jimple.toolkits.ide.icfg.BiDiInterproceduralCFG;
++import soot.toolkits.scalar.Pair;
++import sync.pds.solver.nodes.CallPopNode;
++import sync.pds.solver.nodes.ExclusionNode;
++import sync.pds.solver.nodes.GeneratedState;
++import sync.pds.solver.nodes.INode;
++import sync.pds.solver.nodes.Node;
++import sync.pds.solver.nodes.NodeWithLocation;
++import sync.pds.solver.nodes.PopNode;
++import sync.pds.solver.nodes.PushNode;
++import wpds.impl.NestedWeightedPAutomatons;
++import wpds.impl.Weight;
++import wpds.interfaces.State;
++
++public abstract class ForwardBoomerangSolver<W extends Weight> extends AbstractBoomerangSolver<W> {
++    private final class CallSiteCalleeListener implements CalleeListener<Unit, SootMethod> {
++        private final SootMethod caller;
++        private final Stmt callSite;
++        private final Node<Statement, Val> currNode;
++        private final InvokeExpr invokeExpr;
++
++        private CallSiteCalleeListener(SootMethod caller, Stmt callSite, Node<Statement, Val> currNode,
++                InvokeExpr invokeExpr) {
++            this.caller = caller;
++            this.callSite = callSite;
++            this.currNode = currNode;
++            this.invokeExpr = invokeExpr;
++        }
++
++        @Override
++        public int hashCode() {
++            final int prime = 31;
++            int result = 1;
++            result = prime * result + getOuterType().hashCode();
++            result = prime * result + ((callSite == null) ? 0 : callSite.hashCode());
++            result = prime * result + ((caller == null) ? 0 : caller.hashCode());
++            result = prime * result + ((currNode == null) ? 0 : currNode.hashCode());
++            result = prime * result + ((invokeExpr == null) ? 0 : invokeExpr.hashCode());
++            return result;
++        }
++
++        @Override
++        public boolean equals(Object obj) {
++            if (this == obj)
++                return true;
++            if (obj == null)
++                return false;
++            if (getClass() != obj.getClass())
++                return false;
++            CallSiteCalleeListener other = (CallSiteCalleeListener) obj;
++            if (!getOuterType().equals(other.getOuterType()))
++                return false;
++            if (callSite == null) {
++                if (other.callSite != null)
++                    return false;
++            } else if (!callSite.equals(other.callSite))
++                return false;
++            if (caller == null) {
++                if (other.caller != null)
++                    return false;
++            } else if (!caller.equals(other.caller))
++                return false;
++            if (currNode == null) {
++                if (other.currNode != null)
++                    return false;
++            } else if (!currNode.equals(other.currNode))
++                return false;
++            if (invokeExpr == null) {
++                if (other.invokeExpr != null)
++                    return false;
++            } else if (!invokeExpr.equals(other.invokeExpr))
++                return false;
++            return true;
++        }
++
++        @Override
++        public void onCalleeAdded(Unit callSite, SootMethod callee) {
++            if (callee.isStaticInitializer()) {
++                return;
++            }
++            if(!callee.hasActiveBody()) {
++            	for (State s : computeNormalFlow(caller, currNode.stmt().getUnit().get(), currNode.fact(),
++                        (Stmt) callSite)) {
++                    propagate(currNode, s);
++                }
++            	return;
++            }
++            // onlyStaticInitializer = false;
++            for (Unit calleeSp : icfg.getStartPointsOf(callee)) {
++                Set<State> out = Sets.newHashSet();
++                Collection<? extends State> res = computeCallFlow(caller, new Statement((Stmt) callSite, caller),
++                        invokeExpr, currNode.fact(), callee, (Stmt) calleeSp);
++                out.addAll(res);
++                for (State s : out) {
++                    propagate(currNode, s);
++                }
++            }
++            addReachable(callee);
++
++            // if(Scene.v().isExcluded(callee.getDeclaringClass())) {
++            // calleeExcluded = true;
++            // }
++        }
++
++        @Override
++        public Unit getObservedCaller() {
++            return callSite;
++        }
++
++        private ForwardBoomerangSolver getOuterType() {
++            return ForwardBoomerangSolver.this;
++        }
++    }
++
++    public ForwardBoomerangSolver(ObservableICFG<Unit, SootMethod> icfg, ForwardQuery query,
++            Map<Entry<INode<Node<Statement, Val>>, Field>, INode<Node<Statement, Val>>> genField,
++            BoomerangOptions options, NestedWeightedPAutomatons<Statement, INode<Val>, W> callSummaries,
++            NestedWeightedPAutomatons<Field, INode<Node<Statement, Val>>, W> fieldSummaries) {
++        super(icfg, query, genField, options, callSummaries, fieldSummaries);
++    }
++
++    public Collection<? extends State> computeCallFlow(SootMethod caller, Statement callSite, InvokeExpr invokeExpr,
++            Val fact, SootMethod callee, Stmt calleeSp) {
++        if (!callee.hasActiveBody() || callee.isStaticInitializer()) {
++            return Collections.emptySet();
++        }
++        Body calleeBody = callee.getActiveBody();
++        Set<State> out = Sets.newHashSet();
++        if (invokeExpr instanceof InstanceInvokeExpr) {
++            InstanceInvokeExpr iie = (InstanceInvokeExpr) invokeExpr;
++            if (iie.getBase().equals(fact.value()) && !callee.isStatic()) {
++                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee),
++                        new Val(calleeBody.getThisLocal(), callee), callSite, PDSSystem.CALLS));
++            }
++        }
++        int i = 0;
++        List<Local> parameterLocals = calleeBody.getParameterLocals();
++        for (Value arg : invokeExpr.getArgs()) {
++            if (arg.equals(fact.value()) && parameterLocals.size() > i) {
++                Local param = parameterLocals.get(i);
++                out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee), new Val(param, callee),
++                        callSite, PDSSystem.CALLS));
++            }
++            i++;
++        }
++        if (fact.isStatic()) {
++            out.add(new PushNode<Statement, Val, Statement>(new Statement(calleeSp, callee),
++                    new StaticFieldVal(fact.value(), ((StaticFieldVal) fact).field(), callee), callSite,
++                    PDSSystem.CALLS));
++        }
++        return out;
++    }
++
++    public INode<Node<Statement, Val>> generateFieldState(final INode<Node<Statement, Val>> d, final Field loc) {
++        Entry<INode<Node<Statement, Val>>, Field> e = new AbstractMap.SimpleEntry<>(d, loc);
++        if (!generatedFieldState.containsKey(e)) {
++            generatedFieldState.put(e,
++                    new GeneratedState<Node<Statement, Val>, Field>(fieldAutomaton.getInitialState(), loc));
++        }
++        return generatedFieldState.get(e);
++    }
++
++    @Override
++    protected boolean killFlow(SootMethod m, Stmt curr, Val value) {
++        if (!m.getActiveBody().getLocals().contains(value.value()) && !value.isStatic())
++            return true;
++        if (curr instanceof AssignStmt) {
++            AssignStmt as = (AssignStmt) curr;
++            // Kill x at any statement x = * during propagation.
++            if (as.getLeftOp().equals(value.value())) {
++                // But not for a statement x = x.f
++                if (as.getRightOp() instanceof InstanceFieldRef) {
++                    InstanceFieldRef iie = (InstanceFieldRef) as.getRightOp();
++                    if (iie.getBase().equals(value.value())) {
++                        return false;
++                    }
++                }
++                return true;
++            }
++            if (as.getLeftOp() instanceof StaticFieldRef) {
++                StaticFieldRef sfr = (StaticFieldRef) as.getLeftOp();
++                if (value.isStatic() && value.equals(new StaticFieldVal(as.getLeftOp(), sfr.getField(), m))) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    @Override
++    public void computeSuccessor(Node<Statement, Val> node) {
++        Statement stmt = node.stmt();
++        Optional<Stmt> unit = stmt.getUnit();
++        if (unit.isPresent()) {
++            Stmt curr = unit.get();
++            Val value = node.fact();
++            SootMethod method = icfg.getMethodOf(curr);
++            if (method == null)
++                return;
++            if (icfg.isExitStmt(curr)) {
++                returnFlow(method, node);
++                return;
++            }
++            for (Unit next : icfg.getSuccsOf(curr)) {
++                Stmt nextStmt = (Stmt) next;
++                if (query.getType() instanceof NullType && curr instanceof IfStmt
++                        && killAtIfStmt((IfStmt) curr, value, next)) {
++                    continue;
++                }
++                if (nextStmt.containsInvokeExpr() && (isParameter(value, nextStmt) || value.isStatic())) {
++                    callFlow(method, node, nextStmt, nextStmt.getInvokeExpr());
++                } else if (!killFlow(method, nextStmt, value)) {
++                    Collection<State> out = computeNormalFlow(method, curr, value, nextStmt);
++                    for (State s : out) {
++                        propagate(node, s);
++                    }
++                }
++            }
++        }
++    }
++
++    /**
++     * This method kills a data-flow at an if-stmt, it is assumed that the propagated "allocation" site is x = null and
++     * fact is the propagated aliased variable. (i.e., y after a statement y = x). If the if-stmt checks for if y !=
++     * null or if y == null, data-flow propagation can be killed when along the true/false branch.
++     *
++     * @param ifStmt
++     *            The if-stmt the data-flow value fact bypasses
++     * @param fact
++     *            The data-flow value that bypasses the if-stmt
++     * @param succ
++     *            The successor statement of the if-stmt
++     * @return true if the Val fact shall be killed
++     */
++    private boolean killAtIfStmt(IfStmt ifStmt, Val fact, Unit succ) {
++        Stmt target = ifStmt.getTarget();
++        Value condition = ifStmt.getCondition();
++        if (condition instanceof JEqExpr) {
++            JEqExpr eqExpr = (JEqExpr) condition;
++            Value op1 = eqExpr.getOp1();
++            Value op2 = eqExpr.getOp2();
++            if (fact instanceof ValWithFalseVariable) {
++                ValWithFalseVariable valWithFalseVar = (ValWithFalseVariable) fact;
++                if (op1.equals(valWithFalseVar.getFalseVariable())) {
++                    if (op2.equals(IntConstant.v(0))) {
++                        if (!succ.equals(target)) {
++                            return true;
++                        }
++                    }
++                }
++                if (op2.equals(valWithFalseVar.getFalseVariable())) {
++                    if (op1.equals(IntConstant.v(0))) {
++                        if (!succ.equals(target)) {
++                            return true;
++                        }
++                    }
++                }
++            }
++            if (op1 instanceof NullConstant) {
++                if (op2.equals(fact.value())) {
++                    if (!succ.equals(target)) {
++                        return true;
++                    }
++                }
++            } else if (op2 instanceof NullConstant) {
++                if (op1.equals(fact.value())) {
++                    if (!succ.equals(target)) {
++                        return true;
++                    }
++                }
++            }
++        }
++        if (condition instanceof JNeExpr) {
++            JNeExpr eqExpr = (JNeExpr) condition;
++            Value op1 = eqExpr.getOp1();
++            Value op2 = eqExpr.getOp2();
++            if (op1 instanceof NullConstant) {
++                if (op2.equals(fact.value())) {
++                    if (succ.equals(target)) {
++                        return true;
++                    }
++                }
++            } else if (op2 instanceof NullConstant) {
++                if (op1.equals(fact.value())) {
++                    if (succ.equals(target)) {
++                        return true;
++                    }
++                }
++            }
++        }
++        return false;
++    }
++
++    protected Collection<State> normalFlow(SootMethod method, Stmt curr, Val value) {
++        Set<State> out = Sets.newHashSet();
++        for (Unit succ : icfg.getSuccsOf(curr)) {
++            Collection<State> flow = computeNormalFlow(method, curr, value, (Stmt) succ);
++            out.addAll(flow);
++        }
++        return out;
++    }
++
++    @Override
++    public Collection<State> computeNormalFlow(SootMethod method, Stmt curr, Val fact, Stmt succ) {
++        Set<State> out = Sets.newHashSet();
++        if (!isFieldWriteWithBase(succ, fact)) {
++            // always maintain data-flow if not a field write // killFlow has
++            // been taken care of
++            if (!options.trackReturnOfInstanceOf() || !isInstanceOfStatement(succ, fact)) {
++                out.add(new Node<Statement, Val>(new Statement((Stmt) succ, method), fact));
++            }
++        } else {
++            out.add(new ExclusionNode<Statement, Val, Field>(new Statement(succ, method), fact, getWrittenField(succ)));
++        }
++        List<Pair<Value, Value>> passTroughValues = options.passTroughCall(succ, fact, this);
++        if (!passTroughValues.isEmpty()) {
++            boolean added = false;
++            for (Pair<Value, Value> passTroughValue : passTroughValues) {
++                Value base = passTroughValue.getO1();
++                Value arg = passTroughValue.getO2();
++                if (arg.equals(fact.value())) {
++                    out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(base, method)));
++                    added=true;
++                }
++            }
++            if (added)
++                return out;
++        }
++        if (succ instanceof AssignStmt) {
++            AssignStmt assignStmt = (AssignStmt) succ;
++            Value leftOp = assignStmt.getLeftOp();
++            Value rightOp = assignStmt.getRightOp();
++            if (rightOp.equals(fact.value())) {
++                if (leftOp instanceof InstanceFieldRef) {
++                    InstanceFieldRef ifr = (InstanceFieldRef) leftOp;
++                    if (options.trackFields()) {
++                        out.add(new PushNode<Statement, Val, Field>(new Statement(succ, method),
++                                new Val(ifr.getBase(), method), new Field(ifr.getField()), PDSSystem.FIELDS));
++                    }
++                } else if (leftOp instanceof StaticFieldRef) {
++                    StaticFieldRef sfr = (StaticFieldRef) leftOp;
++                    if (options.trackFields() && options.staticFlows()) {
++                        out.add(new Node<Statement, Val>(new Statement(succ, method),
++                                new StaticFieldVal(leftOp, sfr.getField(), method)));
++                    }
++                } else if (leftOp instanceof ArrayRef) {
++                    ArrayRef arrayRef = (ArrayRef) leftOp;
++                    if (options.trackFields() && options.arrayFlows()) {
++                        out.add(new PushNode<Statement, Val, Field>(new Statement(succ, method),
++                                new Val(arrayRef.getBase(), method), Field.array(), PDSSystem.FIELDS));
++                    }
++                } else {
++                    out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(leftOp, method)));
++                }
++            }
++            if (rightOp instanceof InstanceFieldRef) {
++                InstanceFieldRef ifr = (InstanceFieldRef) rightOp;
++                Value base = ifr.getBase();
++                if (base.equals(fact.value())) {
++                    NodeWithLocation<Statement, Val, Field> succNode = new NodeWithLocation<>(
++                            new Statement(succ, method), new Val(leftOp, method), new Field(ifr.getField()));
++                    out.add(new PopNode<NodeWithLocation<Statement, Val, Field>>(succNode, PDSSystem.FIELDS));
++                }
++            } else if (rightOp instanceof StaticFieldRef) {
++                StaticFieldRef sfr = (StaticFieldRef) rightOp;
++                if (fact.isStatic() && fact.equals(new StaticFieldVal(rightOp, sfr.getField(), method))) {
++                    out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(leftOp, method)));
++                }
++            } else if (rightOp instanceof ArrayRef) {
++                ArrayRef arrayRef = (ArrayRef) rightOp;
++                Value base = arrayRef.getBase();
++                if (base.equals(fact.value())) {
++                    NodeWithLocation<Statement, Val, Field> succNode = new NodeWithLocation<>(
++                            new Statement(succ, method), new Val(leftOp, method), Field.array());
++                    out.add(new PopNode<NodeWithLocation<Statement, Val, Field>>(succNode, PDSSystem.FIELDS));
++                }
++            }
++            else if (rightOp instanceof CastExpr) {
++                CastExpr castExpr = (CastExpr) rightOp;
++                if (castExpr.getOp().equals(fact.value())) {
++                    out.add(new Node<Statement, Val>(new Statement(succ, method), new Val(leftOp, method)));
++                }
++            } else if (rightOp instanceof InstanceOfExpr && query.getType() instanceof NullType
++                    && options.trackReturnOfInstanceOf()) {
++                InstanceOfExpr instanceOfExpr = (InstanceOfExpr) rightOp;
++                if (instanceOfExpr.getOp().equals(fact.value())) {
++                    out.add(new Node<Statement, Val>(new Statement(succ, method),
++                            new ValWithFalseVariable(fact.value(), method, leftOp)));
++                }
++            }
++        }
++
++        return out;
++    }
++
++    private boolean isInstanceOfStatement(Stmt curr, Val fact) {
++        if (curr instanceof AssignStmt) {
++            AssignStmt as = (AssignStmt) curr;
++            if (as.getRightOp() instanceof InstanceOfExpr && query.getType() instanceof NullType) {
++                InstanceOfExpr instanceOfExpr = (InstanceOfExpr) as.getRightOp();
++                if (instanceOfExpr.getOp().equals(fact.value())) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    protected void callFlow(SootMethod caller, Node<Statement, Val> currNode, Stmt callSite, InvokeExpr invokeExpr) {
++        assert icfg.isCallStmt(callSite);
++        if (options.isIgnoredMethod(invokeExpr.getMethod()) || invokeExpr.getMethod().getDeclaringClass().isPhantom() || Scene.v().isExcluded(invokeExpr.getMethod().getDeclaringClass()) || invokeExpr.getMethod().isNative()) {
++            for (State s : computeNormalFlow(caller, currNode.stmt().getUnit().get(), currNode.fact(),
++                    (Stmt) callSite)) {
++                propagate(currNode, s);
++            }
++            for (Statement returnSite : getSuccsOf(currNode.stmt())) {
++                for (State s : getEmptyCalleeFlow(caller, callSite, currNode.fact(), returnSite.getUnit().get())) {
++                    propagate(currNode, s);
++                }
++            }
++        }else{ //*** else branch
++            icfg.addCalleeListener(new CallSiteCalleeListener(caller, callSite, currNode, invokeExpr));
++        }
++    }
++
++    @Override
++    public Collection<? extends State> computeReturnFlow(SootMethod method, Stmt curr, Val value, Stmt callSite,
++            Stmt returnSite) {
++        Statement returnSiteStatement = new Statement(callSite, icfg.getMethodOf(callSite));
++        if (curr instanceof ThrowStmt && !options.throwFlows()) {
++            return Collections.emptySet();
++        }
++        Set<State> out = Sets.newHashSet();
++        if (curr instanceof ReturnStmt) {
++            Value op = ((ReturnStmt) curr).getOp();
++            if (op.equals(value.value())) {
++                if (callSite instanceof AssignStmt) {
++                    out.add(new CallPopNode<Val, Statement>(
++                            new Val(((AssignStmt) callSite).getLeftOp(), icfg.getMethodOf(callSite)), PDSSystem.CALLS,
++                            returnSiteStatement));
++                }
++            }
++        }
++        if (!method.isStatic()) {
++            if (method.getActiveBody().getThisLocal().equals(value.value())) {
++                if (callSite.containsInvokeExpr()) {
++                    if (callSite.getInvokeExpr() instanceof InstanceInvokeExpr) {
++                        InstanceInvokeExpr iie = (InstanceInvokeExpr) callSite.getInvokeExpr();
++                        out.add(new CallPopNode<Val, Statement>(new Val(iie.getBase(), icfg.getMethodOf(callSite)),
++                                PDSSystem.CALLS, returnSiteStatement));
++                    }
++                }
++            }
++        }
++        int index = 0;
++        for (Local param : method.getActiveBody().getParameterLocals()) {
++            if (param.equals(value.value())) {
++                if (callSite.containsInvokeExpr()) {
++                    InvokeExpr iie = (InvokeExpr) callSite.getInvokeExpr();
++                    out.add(new CallPopNode<Val, Statement>(new Val(iie.getArg(index), icfg.getMethodOf(callSite)),
++                            PDSSystem.CALLS, returnSiteStatement));
++                }
++            }
++            index++;
++        }
++        if (value.isStatic()) {
++            out.add(new CallPopNode<Val, Statement>(
++                    new StaticFieldVal(value.value(), ((StaticFieldVal) value).field(), icfg.getMethodOf(callSite)),
++                    PDSSystem.CALLS, returnSiteStatement));
++        }
++        return out;
++    }
++
+ }
+\ No newline at end of file
+diff --git a/boomerangPDS/src/main/resources/log4j.properties b/boomerangPDS/src/main/resources/log4j.properties
+new file mode 100644
+index 00000000..274a09db
+--- /dev/null
++++ b/boomerangPDS/src/main/resources/log4j.properties
+@@ -0,0 +1,10 @@
++# Root logger option
++log4j.rootLogger=INFO, stdout
++log4j.boomerang=INFO, stdout
++# Redirect log messages to console
++log4j.appender.stdout=org.apache.log4j.ConsoleAppender
++log4j.appender.stdout.Target=System.out
++log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
++log4j.appender.stdout.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
++
++
+diff --git a/boomerangPDS/src/test/java/test/cases/fields/IndirectTest.java b/boomerangPDS/src/test/java/test/cases/fields/IndirectTest.java
+new file mode 100644
+index 00000000..cd079234
+--- /dev/null
++++ b/boomerangPDS/src/test/java/test/cases/fields/IndirectTest.java
+@@ -0,0 +1,51 @@
++package test.cases.fields;
++
++/**
++ * *****************************************************************************
++ * Copyright (c) 2018
++ * University, Paderborn, Germany. This program and the accompanying materials are made
++ * available under the terms of the Eclipse Public License 2.0 which is available at
++ * http://www.eclipse.org/legal/epl-2.0.
++ *
++ * <p>SPDX-License-Identifier: EPL-2.0
++ *
++ * <p>Contributors: Johannes Spaeth - initial API and implementation
++ * *****************************************************************************
++ */
++
++import org.junit.Test;
++import test.core.AbstractBoomerangTest;
++import test.core.selfrunning.AllocatedObject;
++
++public class IndirectTest extends AbstractBoomerangTest {
++  public class A implements AllocatedObject {
++    B b;
++    A() {
++      b = new B();
++    }
++  }
++
++  public class B {
++    String t;
++    public B(){
++      t = new String();
++    }
++  }
++
++
++  @Test
++  public void simpleButDiffer() {
++    A x = new A();
++    x.b.t = someString();
++    foo(x);
++    queryFor(x);
++  }
++
++  private <T> void foo(T x) {
++
++  }
++
++  private String someString() {
++    return new String();
++  }
++}
+diff --git a/boomerangPDS/src/test/java/test/core/AbstractBoomerangTest.java b/boomerangPDS/src/test/java/test/core/AbstractBoomerangTest.java
+index addd58d6..6f02bb61 100644
+--- a/boomerangPDS/src/test/java/test/core/AbstractBoomerangTest.java
++++ b/boomerangPDS/src/test/java/test/core/AbstractBoomerangTest.java
+@@ -34,6 +34,7 @@ import boomerang.IntAndStringBoomerangOptions;
+ import boomerang.Query;
+ import boomerang.WeightedBoomerang;
+ import boomerang.WholeProgramBoomerang;
++import boomerang.callgraph.BoomerangICFG;
+ import boomerang.callgraph.CalleeListener;
+ import boomerang.callgraph.ObservableDynamicICFG;
+ import boomerang.callgraph.ObservableICFG;
+@@ -109,7 +110,7 @@ public class AbstractBoomerangTest extends AbstractTestingFramework {
+ 
+             protected void internalTransform(String phaseName, @SuppressWarnings("rawtypes") Map options) {
+                 BoomerangPretransformer.v().apply();
+-                staticIcfg = new ObservableStaticICFG(new JimpleBasedInterproceduralCFG());
++                staticIcfg = new ObservableStaticICFG(new BoomerangICFG(false));
+                 queryDetector = new QueryForCallSiteDetector(staticIcfg);
+                 queryForCallSites = queryDetector.computeSeeds();
+ 
+diff --git a/boomerangPDS/src/test/java/test/core/MultiQueryBoomerangTest.java b/boomerangPDS/src/test/java/test/core/MultiQueryBoomerangTest.java
+index e8559c42..fb064d07 100644
+--- a/boomerangPDS/src/test/java/test/core/MultiQueryBoomerangTest.java
++++ b/boomerangPDS/src/test/java/test/core/MultiQueryBoomerangTest.java
+@@ -12,6 +12,7 @@
+ package test.core;
+ 
+ import boomerang.*;
++import boomerang.callgraph.BoomerangICFG;
+ import boomerang.callgraph.CalleeListener;
+ import boomerang.callgraph.ObservableDynamicICFG;
+ import boomerang.callgraph.ObservableICFG;
+@@ -67,7 +68,7 @@ public class MultiQueryBoomerangTest extends AbstractTestingFramework {
+ 
+             protected void internalTransform(String phaseName, @SuppressWarnings("rawtypes") Map options) {
+                 BoomerangPretransformer.v().apply();
+-                staticIcfg = new ObservableStaticICFG(new JimpleBasedInterproceduralCFG());
++                staticIcfg = new ObservableStaticICFG(new BoomerangICFG(false));
+                 seedFactory = new SeedFactory<Weight.NoWeight>() {
+ 
+                     @Override
+diff --git a/idealPDS/pom.xml b/idealPDS/pom.xml
+index 37f0e2c6..dfcc32fd 100644
+--- a/idealPDS/pom.xml
++++ b/idealPDS/pom.xml
+@@ -3,7 +3,7 @@
+    <parent>
+ 		<groupId>de.fraunhofer.iem</groupId>
+ 		<artifactId>SPDS</artifactId>
+-		<version>2.1-SNAPSHOT</version>
++		<version>2.5.1k-SNAPSHOT</version>
+         <relativePath>../pom.xml</relativePath>
+ 	</parent>
+     <modelVersion>4.0.0</modelVersion>
+@@ -25,22 +25,22 @@
+         <dependency>
+             <groupId>de.fraunhofer.iem</groupId>
+             <artifactId>testCore</artifactId>
+-            <version>2.1-SNAPSHOT</version>
++            <version>2.5.1k-SNAPSHOT</version>
+         </dependency>
+         <dependency>
+             <groupId>de.fraunhofer.iem</groupId>
+             <artifactId>boomerangPDS</artifactId>
+-            <version>2.1-SNAPSHOT</version>
++            <version>2.5.1k-SNAPSHOT</version>
+         </dependency>
+         <dependency>
+             <groupId>de.fraunhofer.iem</groupId>
+             <artifactId>WPDS</artifactId>
+-            <version>2.1-SNAPSHOT</version>
++            <version>2.5.1k-SNAPSHOT</version>
+         </dependency>
+         <dependency>
+             <groupId>com.google.guava</groupId>
+             <artifactId>guava</artifactId>
+-            <version>23.5-jre</version>
++            <version>28.2-jre</version>
+         </dependency>
+ 
+         <dependency>
+@@ -61,8 +61,20 @@
+         <dependency>
+             <groupId>de.fraunhofer.iem</groupId>
+             <artifactId>synchronizedPDS</artifactId>
+-            <version>2.1-SNAPSHOT</version>
++            <version>2.5.1k-SNAPSHOT</version>
+         </dependency>
++
++        <dependency>
++		    <groupId>org.slf4j</groupId>
++		    <artifactId>slf4j-api</artifactId>
++		    <version>1.7.28</version>
++		</dependency>
++		<dependency>
++		    <groupId>org.slf4j</groupId>
++		    <artifactId>slf4j-log4j12</artifactId>
++		    <version>1.7.28</version>
++		    <scope>test</scope>
++		</dependency>
+     </dependencies>
+     <profiles>
+ 		<profile>
+diff --git a/idealPDS/src/main/java/ideal/IDEALAnalysis.java b/idealPDS/src/main/java/ideal/IDEALAnalysis.java
+index 40f881d0..b4101f2a 100644
+--- a/idealPDS/src/main/java/ideal/IDEALAnalysis.java
++++ b/idealPDS/src/main/java/ideal/IDEALAnalysis.java
+@@ -17,6 +17,9 @@ import java.util.HashSet;
+ import java.util.Map;
+ import java.util.Set;
+ 
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
+ import com.google.common.base.Stopwatch;
+ 
+ import boomerang.ForwardQuery;
+@@ -28,8 +31,6 @@ import boomerang.results.ForwardBoomerangResults;
+ import boomerang.seedfactory.SeedFactory;
+ import boomerang.seedfactory.SimpleSeedFactory;
+ import com.google.common.base.Stopwatch;
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
+ import soot.SootMethod;
+ import soot.Unit;
+ import soot.jimple.Stmt;
+@@ -41,7 +42,7 @@ import java.util.*;
+ 
+ public class IDEALAnalysis<W extends Weight> {
+ 
+-    private static final Logger logger = LogManager.getLogger();
++	private static final Logger logger = LoggerFactory.getLogger(IDEALAnalysis.class);
+ 
+     public static boolean PRINT_OPTIONS = false;
+ 
+@@ -53,7 +54,6 @@ public class IDEALAnalysis<W extends Weight> {
+ 
+     public IDEALAnalysis(final IDEALAnalysisDefinition<W> analysisDefinition) {
+         this.analysisDefinition = analysisDefinition;
+-        ObservableICFG<Unit, SootMethod> staticICFG = new ObservableStaticICFG(new JimpleBasedInterproceduralCFG());
+         this.seedFactory = new SeedFactory<W>() {
+ 
+             @Override
+@@ -63,7 +63,7 @@ public class IDEALAnalysis<W extends Weight> {
+ 
+             @Override
+             public ObservableICFG<Unit, SootMethod> icfg() {
+-                return staticICFG;
++                return analysisDefinition.icfg();
+             }
+         };
+     }
+diff --git a/idealPDS/src/main/java/ideal/IDEALSeedSolver.java b/idealPDS/src/main/java/ideal/IDEALSeedSolver.java
+index b64893f7..fe937541 100644
+--- a/idealPDS/src/main/java/ideal/IDEALSeedSolver.java
++++ b/idealPDS/src/main/java/ideal/IDEALSeedSolver.java
+@@ -25,6 +25,7 @@ import boomerang.BackwardQuery;
+ import boomerang.ForwardQuery;
+ import boomerang.Query;
+ import boomerang.WeightedBoomerang;
++import boomerang.callgraph.BoomerangICFG;
+ import boomerang.callgraph.ObservableDynamicICFG;
+ import boomerang.callgraph.ObservableICFG;
+ import boomerang.callgraph.ObservableStaticICFG;
+@@ -330,7 +331,7 @@ public class IDEALSeedSolver<W extends Weight> {
+             public ObservableICFG<Unit, SootMethod> icfg() {
+                 if (analysisDefinition.icfg() == null) {
+                     // For Static ICFG use this line
+-                    analysisDefinition.icfg = new ObservableStaticICFG(new JimpleBasedInterproceduralCFG(false));
++                    analysisDefinition.icfg = new ObservableStaticICFG(new BoomerangICFG(false));
+                 }
+                 return analysisDefinition.icfg();
+             }
+diff --git a/idealPDS/src/main/java/ideal/IDEALWeightFunctions.java b/idealPDS/src/main/java/ideal/IDEALWeightFunctions.java
+index ff01138e..497e0525 100644
+--- a/idealPDS/src/main/java/ideal/IDEALWeightFunctions.java
++++ b/idealPDS/src/main/java/ideal/IDEALWeightFunctions.java
+@@ -14,8 +14,8 @@ package ideal;
+ import java.util.Collection;
+ import java.util.Set;
+ 
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ 
+ import com.google.common.collect.HashMultimap;
+ import com.google.common.collect.Lists;
+@@ -32,7 +32,7 @@ import wpds.impl.Weight;
+ 
+ public class IDEALWeightFunctions<W extends Weight> implements WeightFunctions<Statement, Val, Statement, W> {
+ 
+-    private static final Logger logger = LogManager.getLogger();
++	private static final Logger logger = LoggerFactory.getLogger(IDEALWeightFunctions.class);
+     private WeightFunctions<Statement, Val, Statement, W> delegate;
+     private Set<NonOneFlowListener> listeners = Sets.newHashSet();
+     private Set<Statement> potentialStrongUpdates = Sets.newHashSet();
+diff --git a/idealPDS/src/main/java/inference/example/Main.java b/idealPDS/src/main/java/inference/example/Main.java
+index 44e2f7b7..3a99755c 100644
+--- a/idealPDS/src/main/java/inference/example/Main.java
++++ b/idealPDS/src/main/java/inference/example/Main.java
+@@ -19,8 +19,8 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.Map.Entry;
+ 
+-import org.apache.logging.log4j.LogManager;
+-import org.apache.logging.log4j.Logger;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ 
+ import com.google.common.base.Joiner;
+ import com.google.common.collect.Table;
+@@ -35,6 +35,7 @@ import ideal.IDEALAnalysis;
+ import ideal.IDEALAnalysisDefinition;
+ import ideal.IDEALResultHandler;
+ import ideal.IDEALSeedSolver;
++import ideal.IDEALWeightFunctions;
+ import ideal.StoreIDEALResultHandler;
+ import inference.InferenceWeight;
+ import inference.InferenceWeightFunctions;
+@@ -55,7 +56,7 @@ import sync.pds.solver.WeightFunctions;
+ 
+ public class Main {
+ 
+-    private static final Logger logger = LogManager.getLogger();
++    private static final Logger logger = LoggerFactory.getLogger(Main.class);
+ 
+     public static void main(String... args) {
+         String sootClassPath = System.getProperty("user.dir") + File.separator + "target" + File.separator + "classes";
+@@ -92,7 +93,7 @@ public class Main {
+         if (c != null) {
+             c.setApplicationClass();
+             for (SootMethod m : c.getMethods()) {
+-                logger.debug(m);
++                logger.debug(m.toString());
+             }
+         }
+     }
+diff --git a/idealPDS/src/test/java/test/IDEALTestingFramework.java b/idealPDS/src/test/java/test/IDEALTestingFramework.java
+index ac16c12d..1038aa66 100644
+--- a/idealPDS/src/test/java/test/IDEALTestingFramework.java
++++ b/idealPDS/src/test/java/test/IDEALTestingFramework.java
+@@ -25,6 +25,7 @@ import com.google.common.collect.Lists;
+ import boomerang.BoomerangOptions;
+ import boomerang.DefaultBoomerangOptions;
+ import boomerang.WeightedForwardQuery;
++import boomerang.callgraph.BoomerangICFG;
+ import boomerang.callgraph.CalleeListener;
+ import boomerang.callgraph.ObservableICFG;
+ import boomerang.callgraph.ObservableStaticICFG;
+@@ -88,6 +89,11 @@ public abstract class IDEALTestingFramework extends AbstractTestingFramework {
+             public IDEALResultHandler<TransitionFunction> getResultHandler() {
+                 return resultHandler;
+             }
++            
++            @Override
++            public ObservableICFG<Unit, SootMethod> icfg() {
++            	return staticIcfg;
++            }
+ 
+             @Override
+             public BoomerangOptions boomerangOptions() {
+@@ -109,7 +115,7 @@ public abstract class IDEALTestingFramework extends AbstractTestingFramework {
+             protected void internalTransform(String phaseName, @SuppressWarnings("rawtypes") Map options) {
+                 BoomerangPretransformer.v().reset();
+                 BoomerangPretransformer.v().apply();
+-                staticIcfg = new ObservableStaticICFG(new JimpleBasedInterproceduralCFG(false));
++                staticIcfg = new ObservableStaticICFG(new BoomerangICFG(false));
+                 Set<Assertion> expectedResults = parseExpectedQueryResults(sootTestMethod);
+                 TestingResultReporter testingResultReporter = new TestingResultReporter(expectedResults);
+ 
+diff --git a/pom.xml b/pom.xml
+index 94da26fa..61318b2b 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,90 +1,75 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+-  <modelVersion>4.0.0</modelVersion>
+-  <groupId>de.fraunhofer.iem</groupId>
+-  <artifactId>SPDS</artifactId>
+-  <version>2.1-SNAPSHOT</version>
+-  <packaging>pom</packaging>
+-  <name>SPDS</name>
+-  <modules>
+-    <module>WPDS</module>
+-    <module>SynchronizedPDS</module>
+-    <module>testCore</module>
+-    <module>boomerangPDS</module>
+-    <module>idealPDS</module>
+-   </modules>
+-  <properties>
+-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+-    <sootVersion>3.3.0-SNAPSHOT</sootVersion>
+-  </properties>
+-  <build>
+-    <plugins>
+-      <plugin>
+-        <artifactId>maven-compiler-plugin</artifactId>
+-        <version>3.3</version>
+-        <configuration>
+-          <source>1.8</source>
+-          <target>1.8</target>
+-        </configuration>
+-      </plugin>
+-       <plugin>
+-        <groupId>com.github.spotbugs</groupId>
+-        <artifactId>spotbugs-maven-plugin</artifactId>
+-        <version>3.1.8</version>
+-        <dependencies>
+-          <!-- overwrite dependency on spotbugs if you want to specify the version of spotbugs -->
+-          <dependency>
+-            <groupId>com.github.spotbugs</groupId>
+-            <artifactId>spotbugs</artifactId>
+-            <version>3.1.9</version>
+-          </dependency>
+-        </dependencies>
+-      </plugin>
+-    </plugins>
+-    
+-  </build>
+-    <reporting>
+-      <plugins>
+-        <plugin>
+-          <groupId>org.apache.maven.plugins</groupId>
+-          <artifactId>maven-checkstyle-plugin</artifactId>
+-          <version>3.0.0</version>
+-          <reportSets>
+-            <reportSet>
+-              <reports>
+-                <report>checkstyle</report>
+-              </reports>
+-            </reportSet>
+-          </reportSets>
+-        </plugin>
+-      </plugins>
+-    </reporting>
+-    <repositories>
+-    <repository>
+-      <id>soot-snapshot</id>
+-      <name>soot snapshots</name>
+-      <url>https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-snapshot/</url>
+-      <releases>
+-        <enabled>false</enabled>
+-      </releases>
+-    </repository>
+-    <repository>
+-      <id>soot-release</id>
+-      <name>soot release</name>
+-      <url>https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-release/</url>
+-      <snapshots>
+-        <enabled>false</enabled>
+-      </snapshots>
+-    </repository>
+-  </repositories>
+-    <distributionManagement>
+-    <snapshotRepository>
+-      <id>soot-snapshot</id>
+-      <url>https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-snapshot/</url>
+-    </snapshotRepository>
+-    <repository>
+-      <id>soot-release</id>
+-      <url>https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-release/</url>
+-    </repository>
+-  </distributionManagement>
++<project xmlns="http://maven.apache.org/POM/4.0.0"
++	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
++	<modelVersion>4.0.0</modelVersion>
++	<groupId>de.fraunhofer.iem</groupId>
++	<artifactId>SPDS</artifactId>
++	<version>2.5.1k-SNAPSHOT</version>
++	<packaging>pom</packaging>
++	<name>SPDS</name>
++	<modules>
++		<module>WPDS</module>
++		<module>SynchronizedPDS</module>
++		<module>testCore</module>
++		<module>boomerangPDS</module>
++		<module>idealPDS</module>
++	</modules>
++	<properties>
++		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
++		<sootVersion>4.1.0-SNAPSHOT</sootVersion>
++	</properties>
++	<build>
++		<plugins>
++			<plugin>
++				<artifactId>maven-compiler-plugin</artifactId>
++				<version>3.8.1</version>
++				<configuration>
++					<source>1.8</source>
++					<target>1.8</target>
++				</configuration>
++			</plugin>
++			<plugin>
++				<groupId>org.apache.maven.plugins</groupId>
++				<artifactId>maven-source-plugin</artifactId>
++				<version>3.1.0</version>
++				<executions>
++					<execution>
++						<id>attach-sources</id>
++						<goals>
++							<goal>jar</goal>
++						</goals>
++					</execution>
++				</executions>
++			</plugin>
++		</plugins>
++	</build>
++	<repositories>
++		<repository>
++			<id>soot-snapshot</id>
++			<name>soot snapshot</name>
++			<url>https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-snapshot/</url>
++			<releases>
++				<enabled>false</enabled>
++			</releases>
++		</repository>
++		<repository>
++			<id>soot-release</id>
++			<name>soot release</name>
++			<url>https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-release/</url>
++			<snapshots>
++				<enabled>false</enabled>
++			</snapshots>
++		</repository>
++	</repositories>
++	<distributionManagement>
++		<snapshotRepository>
++			<id>soot-snapshot</id>
++			<url>https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-snapshot/</url>
++		</snapshotRepository>
++		<repository>
++			<id>soot-release</id>
++			<url>https://soot-build.cs.uni-paderborn.de/nexus/repository/soot-release/</url>
++		</repository>
++	</distributionManagement>
+ </project>
+diff --git a/shippable.yml b/shippable.yml
+deleted file mode 100644
+index 479775db..00000000
+--- a/shippable.yml
++++ /dev/null
+@@ -1,8 +0,0 @@
+-language: java
+-
+-jdk:
+-   - oraclejdk8
+-
+-build:
+-  ci:
+-   - mvn verify -P shippableTestSet --fail-at-end -B
+diff --git a/testCore/pom.xml b/testCore/pom.xml
+index 1d50727c..4ee77b79 100644
+--- a/testCore/pom.xml
++++ b/testCore/pom.xml
+@@ -4,7 +4,7 @@
+ 	<parent>
+ 	    <groupId>de.fraunhofer.iem</groupId>
+ 	    <artifactId>SPDS</artifactId>
+-	    <version>2.1-SNAPSHOT</version>
++	    <version>2.5.1k-SNAPSHOT</version>
+     	<relativePath>../pom.xml</relativePath>
+   	</parent>
+ 	<modelVersion>4.0.0</modelVersion>
+@@ -13,12 +13,12 @@
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+ 			<artifactId>WPDS</artifactId>
+-			<version>2.1-SNAPSHOT</version>
++			<version>2.5.1k-SNAPSHOT</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>com.google.guava</groupId>
+ 			<artifactId>guava</artifactId>
+-			<version>23.5-jre</version>
++			<version>28.2-jre</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+@@ -38,7 +38,7 @@
+ 		<dependency>
+ 			<groupId>de.fraunhofer.iem</groupId>
+ 			<artifactId>synchronizedPDS</artifactId>
+-			<version>2.1-SNAPSHOT</version>
++			<version>2.4-SNAPSHOT</version>
+ 		</dependency>
+ 	</dependencies>
+ </project>
+\ No newline at end of file
+diff --git a/testCore/src/main/java/test/core/selfrunning/AbstractTestingFramework.java b/testCore/src/main/java/test/core/selfrunning/AbstractTestingFramework.java
+index 0ec7dc72..75f60f7b 100644
+--- a/testCore/src/main/java/test/core/selfrunning/AbstractTestingFramework.java
++++ b/testCore/src/main/java/test/core/selfrunning/AbstractTestingFramework.java
+@@ -15,6 +15,7 @@ import org.junit.Assert;
+ import org.junit.Before;
+ import org.junit.Rule;
+ import org.junit.rules.TestName;
++
+ import soot.*;
+ import soot.jimple.Jimple;
+ import soot.jimple.JimpleBody;
+@@ -89,14 +90,6 @@ public abstract class AbstractTestingFramework {
+         Options.v().setPhaseOption("cg.spark", "verbose:true");
+         Options.v().set_output_format(Options.output_format_none);
+ 
+-        String userdir = System.getProperty("user.dir");
+-        String sootCp = userdir + "/target/test-classes";
+-        String javaHome = System.getProperty("java.home");
+-        if (javaHome == null || javaHome.equals(""))
+-            throw new RuntimeException("Could not get property java.home!");
+-        sootCp += File.pathSeparator + javaHome + "/lib/rt.jar";
+-        sootCp += File.pathSeparator + javaHome + "/lib/jce.jar";
+-
+         Options.v().set_no_bodies_for_excluded(true);
+         Options.v().set_allow_phantom_refs(true);
+ 
+@@ -105,7 +98,17 @@ public abstract class AbstractTestingFramework {
+         Options.v().setPhaseOption("jb", "use-original-names:true");
+ 
+         Options.v().set_exclude(excludedPackages());
+-        Options.v().set_soot_classpath(getSootClassPath());
++        
++        // JAVA VERSION 8
++     	if(getJavaVersion() < 9) {
++     		Options.v().set_prepend_classpath(true);
++   			Options.v().set_soot_classpath(getSootClassPath());
++   		}
++    	// JAVA VERSION 9
++     	else if(getJavaVersion() >= 9) {
++     		Options.v().set_soot_classpath("VIRTUAL_FS_FOR_JDK" + File.pathSeparator + getSootClassPath());
++     	}
++        
+         // Options.v().set_main_class(this.getTargetClass());
+         SootClass sootTestCaseClass = Scene.v().forceResolve(getTestCaseClassName(), SootClass.BODIES);
+ 
+@@ -149,8 +152,10 @@ public abstract class AbstractTestingFramework {
+             throw new RuntimeException("Could not get property java.home!");
+ 
+         String sootCp = userdir + "/target/test-classes";
+-        sootCp += File.pathSeparator + javaHome + "/lib/rt.jar";
+-        sootCp += File.pathSeparator + javaHome + "/lib/jce.jar";
++        if(getJavaVersion() < 9) {
++        	sootCp += File.pathSeparator + javaHome + "/lib/rt.jar";
++        	sootCp += File.pathSeparator + javaHome + "/lib/jce.jar";
++        }
+         return sootCp;
+     }
+ 
+@@ -215,4 +220,14 @@ public abstract class AbstractTestingFramework {
+     protected boolean staticallyUnknown() {
+         return true;
+     }
++    
++    private static int getJavaVersion() {
++	    String version = System.getProperty("java.version");
++	    if(version.startsWith("1.")) {
++	        version = version.substring(2, 3);
++	    } else {
++	        int dot = version.indexOf(".");
++	        if(dot != -1) { version = version.substring(0, dot); }
++	    } return Integer.parseInt(version);
++	}
+ }

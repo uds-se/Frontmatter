@@ -1,0 +1,19 @@
+# api
+# TODO check list
+<com.android.providers.media.MediaProvider: android.net.Uri getAlbumArtOutputUri(com.android.providers.media.MediaProvider$DatabaseHelper,android.database.sqlite.SQLiteDatabase,long,android.net.Uri)>
+<com.android.providers.media.MediaProvider: android.os.ParcelFileDescriptor getThumb(com.android.providers.media.MediaProvider$DatabaseHelper,android.database.sqlite.SQLiteDatabase,java.lang.String,long,android.net.Uri)>
+<com.android.providers.media.MediaProvider: android.os.ParcelFileDescriptor makeThumbInternal(com.android.providers.media.MediaProvider$ThumbData)>
+<com.android.providers.media.MediaProvider: android.os.ParcelFileDescriptor openFile(android.net.Uri,java.lang.String)>
+<com.android.providers.media.MediaProvider: android.os.ParcelFileDescriptor openFileAndEnforcePathPermissionsHelper(android.net.Uri,java.lang.String)>
+# url
+content://media
+content://media/external/file
+content://media/external/fs_id
+content://media/external/audio/albumart
+content://media/external/audio/albums
+android.provider.MediaStore.*: android.net.Uri .*CONTENT_URI
+<android.provider.MediaStore$Images$Media: android.net.Uri EXTERNAL_CONTENT_URI>
+<android.provider.MediaStore$Audio$Albums: android.net.Uri EXTERNAL_CONTENT_URI>
+<android.provider.MediaStore$Audio$Media: android.net.Uri EXTERNAL_CONTENT_URI>
+<android.provider.MediaStore$Audio$Artists: android.net.Uri EXTERNAL_CONTENT_URI>
+<android.provider.MediaStore$Audio$Genres: android.net.Uri EXTERNAL_CONTENT_URI>

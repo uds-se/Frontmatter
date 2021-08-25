@@ -1,0 +1,2 @@
+<android.provider.CallLog$Calls: android.net.Uri addCall(com.android.internal.telephony.CallerInfo,android.content.Context,java.lang.String,int,int,long,int)>
+<android.provider.CallLog$Calls: void removeExpiredEntries(android.content.Context)>

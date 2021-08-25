@@ -1,0 +1,7 @@
+# api
+<android.telephony.PhoneStateListener: void onCallStateChanged(int,java.lang.String)>
+<com.android.phone.OutgoingCallBroadcaster: void onCreate(android.os.Bundle)>
+<com.android.phone.OutgoingCallBroadcaster: void processIntent(android.content.Intent)>
+# action
+<android.content.Intent: ACTION_NEW_OUTGOING_CALL>
+android.intent.action.NEW_OUTGOING_CALL

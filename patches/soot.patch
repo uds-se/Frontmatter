@@ -1,0 +1,19 @@
+Index: src/main/java/soot/dexpler/DexBody.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/soot/dexpler/DexBody.java b/src/main/java/soot/dexpler/DexBody.java
+--- a/src/main/java/soot/dexpler/DexBody.java	(revision c53e51cd406a78ed622d71e0e2082c308b07f4b8)
++++ b/src/main/java/soot/dexpler/DexBody.java	(revision f8813b1daf7379d8cae038ddd52c83c105cd818f)
+@@ -865,7 +865,9 @@
+ 
+     // We pack locals that are not used in overlapping regions. This may
+     // again lead to unused locals which we have to remove.
+-    LocalPacker.v().transform(jBody);
++
++    PackManager.v().getTransform("jb.lp").apply(jBody);
++    //LocalPacker.v().transform(jBody);
+     UnusedLocalEliminator.v().transform(jBody);
+     PackManager.v().getTransform("jb.lns").apply(jBody);
+ 

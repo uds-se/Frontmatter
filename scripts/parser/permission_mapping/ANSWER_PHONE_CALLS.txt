@@ -1,0 +1,3 @@
+<android.telecom.TelecomManager: void acceptRingingCall(int)>
+<android.telecom.TelecomManager: void acceptRingingCall()>
+<android.telecom.TelecomManager: boolean endCall()>

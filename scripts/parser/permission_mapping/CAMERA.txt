@@ -1,0 +1,11 @@
+# api
+<android.hardware.Camera: android.hardware.Camera open()>
+<android.hardware.Camera: android.hardware.Camera open(int)>
+<android.hardware.camera2.CameraManager: void openCamera(android.os.Handler)>
+<com.google.android.gms.vision.CameraSource: com.google.android.gms.vision.CameraSource start()>
+<com.google.android.gms.vision.CameraSource: com.google.android.gms.vision.CameraSource start(android.view.SurfaceHolder)>
+# actions
+android.media.action.IMAGE_CAPTURE
+android.media.action.VIDEO_CAPTURE
+<android.provider.MediaStore: java.lang.String ACTION_IMAGE_CAPTURE>
+<android.provider.MediaStore: java.lang.String ACTION_VIDEO_CAPTURE>

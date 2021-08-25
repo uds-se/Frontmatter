@@ -1,0 +1,8 @@
+# uri and actions
+<android.provider.VoicemailContract$Status: android.net.Uri CONTENT_URI>
+<android.provider.VoicemailContract$Voicemails: android.net.Uri CONTENT_URI>
+content://com.android.voicemail
+android.intent.action.NEW_VOICEMAIL
+android.intent.action.FETCH_VOICEMAIL
+android.provider.action.SYNC_VOICEMAIL
+<android.provider.VoicemailContract: java.lang.String ACTION_NEW_VOICEMAIL>

@@ -1,0 +1,8 @@
+# uri
+# TODO
+content://cellbroadcasts
+android.provider.Telephony.SMS_CB_RECEIVED
+android.provider.Telephony.CB_RECEIVED
+android.provider.Telephony.CB_SETTINGS_AVAILABLE
+android.provider.Telephony.SET_CB_ERR_RECEIVED
+android.provider.Telephony.GET_CB_ERR_RECEIVED
