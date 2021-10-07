@@ -1,12 +1,21 @@
-Index: src/main/java/soot/dexpler/DexBody.java
-IDEA additional info:
-Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
-<+>UTF-8
-===================================================================
+diff --git a/pom.xml b/pom.xml
+index 65f78ee7d..a3f2b4bde 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -496,7 +496,7 @@
+         <dependency>
+             <groupId>de.upb.cs.swt</groupId>
+             <artifactId>heros</artifactId>
+-            <version>1.2.1-SNAPSHOT</version>
++            <version>1.2.1</version>
+         </dependency>
+         <!-- Uploaded to http://soot-build.cs.uni-paderborn.de/nexus/repository/soot-snapshot/
+             from the nightly build server -->
 diff --git a/src/main/java/soot/dexpler/DexBody.java b/src/main/java/soot/dexpler/DexBody.java
---- a/src/main/java/soot/dexpler/DexBody.java	(revision c53e51cd406a78ed622d71e0e2082c308b07f4b8)
-+++ b/src/main/java/soot/dexpler/DexBody.java	(revision f8813b1daf7379d8cae038ddd52c83c105cd818f)
-@@ -865,7 +865,9 @@
+index 713e7e7ca..b3ce336f6 100755
+--- a/src/main/java/soot/dexpler/DexBody.java
++++ b/src/main/java/soot/dexpler/DexBody.java
+@@ -865,7 +865,9 @@ public class DexBody {
  
      // We pack locals that are not used in overlapping regions. This may
      // again lead to unused locals which we have to remove.
