@@ -1,10 +1,10 @@
 ### Frontmatter
 Frontmatter is a context-sensitive static analysis tool which extracts UI hierarchies and app's behavior from Android applications.
 
-### Building tribble
-Building and running Frontmatter requires Java version 11 or greater.  
+### Building Frontmatter
+Building and running Frontmatter requires Java version 11 or greater and Gradle version >= 6.0 (6.8.3 used).  
 At first, install and patch necessary dependencies by running `./gradle installDependencies` in the project's root directory.  
-Next, build tribble by running `./gradle build` in the project's root directory.  
+Next, build Frontmatter by running `./gradle build` in the project's root directory.  
 To get a fat jar, which can be run standalone, run `./gradle shadowJar`. 
 
 ### Running Frontmatter
