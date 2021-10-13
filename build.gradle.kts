@@ -91,6 +91,9 @@ tasks {
             attributes["Implementation-Version"] = project.version
         }
     }
+    withType<Wrapper>{
+        gradleVersion = "6.8.3"
+    }
 }
 
 val sootDir = "$buildDir/soot"
