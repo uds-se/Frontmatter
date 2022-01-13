@@ -20,7 +20,7 @@ from config import ZooConfig
 
 class ZooCrawler:
     ZOO_BASE_URL = 'https://androzoo.uni.lu/api/download'
-    ZOO_API_KEY = '***REMOVED***'
+    ZOO_API_KEY = '<API_KEY>'
     ANDROZOO_CSV = 'latest.csv'
     apk_bytes = 100000
     zip_reader = ZipReader()
